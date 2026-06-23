@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dev Tools | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root { --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07); --text:#e2e8f0; --muted:#64748b; --green:#10b981; --red:#ef4444; }
+body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+.nav { display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid var(--b1); flex-shrink:0; background:rgba(7,7,15,0.95); }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:4px 10px; border:1px solid var(--b1); border-radius:12px; }
+.nav-title { font-size:13px; font-weight:700; flex:1; }
+
+/* TABS */
+.tabs { display:flex; border-bottom:1px solid var(--b1); overflow-x:auto; flex-shrink:0; background:rgba(0,0,0,0.2); }
+.tab-btn { font-size:10px; padding:9px 16px; white-space:nowrap; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:'JetBrains Mono',monospace; border-bottom:2px solid transparent; transition:all 0.2s; flex-shrink:0; }
+.tab-btn.active { color:#a78bfa; border-bottom-color:#7c3aed; }
+.tab-btn:hover:not(.active) { color:var(--text); }
+
+.content { flex:1; overflow:hidden; display:none; }
+.content.active { display:flex; flex-direction:column; }
+
+/* PANELS */
+.panel { display:flex; flex:1; gap:0; overflow:hidden; }
+.pane { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.pane + .pane { border-left:1px solid var(--b1); }
+.pane-header { padding:8px 12px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--b1); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:rgba(0,0,0,0.15); }
+.pane-header-title { letter-spacing:0.1em; }
+.pane-actions { display:flex; gap:6px; }
+.pane-btn { font-size:9px; padding:3px 8px; border-radius:6px; cursor:pointer; border:1px solid var(--b1); background:transparent; color:var(--muted); font-family:inherit; transition:all 0.15s; }
+.pane-btn:hover { color:#fff; }
+.pane-btn.ok { border-color:rgba(16,185,129,0.3); color:#34d399; }
+.pane-btn.err { border-color:rgba(239,68,68,0.3); color:#f87171; }
+
+textarea, .output {
+  flex:1; padding:12px; font-family:'JetBrains Mono',monospace; font-size:12px;
+  background:transparent; border:none; outline:none; color:var(--text); resize:none;
+  line-height:1.7; overflow-y:auto;
+}
+.output { white-space:pre-wrap; word-break:break-all; }
+.output.success { color:#34d399; }
+.output.error { color:#f87171; }
+
+/* JSON syntax highlighting */
+.json-key    { color:#a78bfa; }
+.json-string { color:#4ade80; }
+.json-number { color:#fb923c; }
+.json-bool   { color:#38bdf8; }
+.json-null   { color:#94a3b8; }
+
+/* REGEX */
+.regex-input-row { display:flex; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid var(--b1); flex-shrink:0; }
+.regex-delim { font-size:16px; color:var(--muted); }
+.regex-input { flex:1; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:13px; color:#a78bfa; }
+.flags-input { width:50px; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:13px; color:#fb923c; }
+.match-count { font-size:10px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--b1); flex-shrink:0; }
+.match { background:rgba(124,58,237,0.3); border-radius:2px; }
+.match-alt { background:rgba(245,158,11,0.2); border-radius:2px; }
+
+/* HASH GRID */
+.hash-grid { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; }
+.hash-row { display:grid; grid-template-columns:80px 1fr; border-bottom:1px solid var(--b1); }
+.hash-label { padding:10px 12px; font-size:10px; color:var(--muted); border-right:1px solid var(--b1); display:flex; align-items:center; }
+.hash-value { padding:10px 12px; font-size:11px; color:#4ade80; word-break:break-all; cursor:pointer; }
+.hash-value:hover { background:rgba(16,185,129,0.05); }
+
+/* URL ENCODE */
+.url-grid { display:flex; flex-direction:column; gap:8px; padding:12px; overflow-y:auto; flex:1; }
+.url-row { display:grid; grid-template-columns:100px 1fr; gap:8px; align-items:start; }
+.url-label { font-size:10px; color:var(--muted); padding-top:4px; }
+
+/* COLOR */
+.color-section { padding:12px; overflow-y:auto; flex:1; }
+.color-picker-wrap { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.color-swatch-large { width:60px; height:60px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); flex-shrink:0; }
+.color-formats { display:flex; flex-direction:column; gap:6px; }
+.color-format-row { display:flex; gap:8px; align-items:center; }
+.color-fmt-label { font-size:9px; color:var(--muted); width:36px; }
+.color-fmt-val { font-size:11px; color:#a78bfa; cursor:pointer; flex:1; background:rgba(0,0,0,0.2); padding:4px 8px; border-radius:6px; border:1px solid var(--b1); }
+.color-fmt-val:hover { border-color:rgba(124,58,237,0.3); }
+.contrast-section { margin-top:12px; }
+.contrast-label { font-size:10px; color:var(--muted); margin-bottom:6px; }
+.contrast-demo { padding:10px; border-radius:8px; text-align:center; font-size:13px; margin-bottom:6px; }
+
+/* DIFF */
+.diff-added   { background:rgba(16,185,129,0.1); color:#4ade80; }
+.diff-removed { background:rgba(239,68,68,0.1); color:#f87171; }
+.diff-line { padding:1px 12px; line-height:1.7; font-family:'JetBrains Mono',monospace; font-size:11px; }
+
+/* STATUS BAR */
+.status-bar { padding:4px 12px; font-size:9px; color:var(--muted); border-top:1px solid var(--b1); flex-shrink:0; display:flex; gap:12px; background:rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-title">🔧 Developer Tools</div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('json', this)">JSON</button>
+  <button class="tab-btn" onclick="switchTab('regex', this)">Regex</button>
+  <button class="tab-btn" onclick="switchTab('base64', this)">Base64</button>
+  <button class="tab-btn" onclick="switchTab('hash', this)">Hash</button>
+  <button class="tab-btn" onclick="switchTab('url', this)">URL</button>
+  <button class="tab-btn" onclick="switchTab('color', this)">Color</button>
+  <button class="tab-btn" onclick="switchTab('diff', this)">Diff</button>
+  <button class="tab-btn" onclick="switchTab('jwt', this)">JWT</button>
+</div>
+
+<!-- JSON TAB -->
+<div class="content active" id="tab-json">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">INPUT</div>
+        <div class="pane-actions">
+          <button class="pane-btn" onclick="jsonFormat()">Format</button>
+          <button class="pane-btn" onclick="jsonMinify()">Minify</button>
+          <button class="pane-btn" onclick="jsonSample()">Sample</button>
+        </div>
+      </div>
+      <textarea id="json-input" placeholder="JSONを貼り付けてください..." oninput="jsonProcess()" spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">OUTPUT</div>
+        <div class="pane-actions">
+          <button class="pane-btn" id="json-copy" onclick="copyText('json-out')">Copy</button>
+          <span id="json-status" style="font-size:9px;color:#34d399;"></span>
+        </div>
+      </div>
+      <div class="output" id="json-out"></div>
+    </div>
+  </div>
+  <div class="status-bar"><span id="json-info">入力待ち</span></div>
+</div>
+
+<!-- REGEX TAB -->
+<div class="content" id="tab-regex">
+  <div class="regex-input-row">
+    <span class="regex-delim">/</span>
+    <input type="text" class="regex-input" id="regex-pat" placeholder="pattern" oninput="regexTest()" spellcheck="false">
+    <span class="regex-delim">/</span>
+    <input type="text" class="flags-input" id="regex-flags" value="gm" oninput="regexTest()" placeholder="gim">
+  </div>
+  <div class="match-count" id="regex-matches">マッチ: 0</div>
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">TEST STRING</div></div>
+      <textarea id="regex-input" placeholder="テストする文字列..." oninput="regexTest()" spellcheck="false">Hello World 123
+test@example.com
+https://mira.example.com
+2026-06-21</textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">MATCHES</div></div>
+      <div class="output" id="regex-out"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BASE64 TAB -->
+<div class="content" id="tab-base64">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">PLAIN TEXT</div>
+        <div class="pane-actions"><button class="pane-btn" onclick="b64Sample()">Sample</button></div>
+      </div>
+      <textarea id="b64-plain" placeholder="テキストを入力..." oninput="b64Encode()" spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">BASE64</div>
+        <div class="pane-actions"><button class="pane-btn" onclick="copyText('b64-out')">Copy</button></div>
+      </div>
+      <textarea id="b64-out" placeholder="Base64エンコード結果..." oninput="b64Decode()" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- HASH TAB -->
+<div class="content" id="tab-hash">
+  <div class="panel">
+    <div class="pane" style="max-width:320px;">
+      <div class="pane-header"><div class="pane-header-title">INPUT</div></div>
+      <textarea id="hash-input" placeholder="ハッシュするテキスト..." oninput="computeHashes()" spellcheck="false" style="max-height:200px;flex:unset;min-height:200px;"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">HASHES</div>
+        <div class="pane-actions"><span style="font-size:9px;color:var(--muted);">クリックでコピー</span></div>
+      </div>
+      <div class="hash-grid" id="hash-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- URL TAB -->
+<div class="content" id="tab-url">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">URL / TEXT</div></div>
+      <textarea id="url-input" placeholder="URLまたはテキストを入力..." oninput="urlProcess()" spellcheck="false" style="max-height:160px;flex:unset;min-height:160px;"></textarea>
+      <div class="url-grid" id="url-output"></div>
+    </div>
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">URL解析</div></div>
+      <div class="output" id="url-parsed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- COLOR TAB -->
+<div class="content" id="tab-color">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">COLOR PICKER</div></div>
+      <div class="color-section">
+        <div class="color-picker-wrap">
+          <input type="color" id="color-picker" value="#7c3aed" oninput="colorUpdate()">
+          <div class="color-swatch-large" id="color-swatch"></div>
+          <div class="color-formats" id="color-formats"></div>
+        </div>
+        <div class="contrast-section">
+          <div class="contrast-label">コントラスト確認</div>
+          <div class="contrast-demo" id="contrast-dark" style="background:#000;">暗い背景に表示</div>
+          <div class="contrast-demo" id="contrast-light" style="background:#fff;">明るい背景に表示</div>
+          <div id="contrast-ratio" style="font-size:10px;color:var(--muted);"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">PALETTE</div></div>
+      <div class="color-section" id="palette-section"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DIFF TAB -->
+<div class="content" id="tab-diff">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">ORIGINAL</div></div>
+      <textarea id="diff-a" placeholder="元のテキスト..." oninput="computeDiff()" spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">MODIFIED</div></div>
+      <textarea id="diff-b" placeholder="変更後のテキスト..." oninput="computeDiff()" spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">DIFF</div>
+        <div class="pane-actions"><span id="diff-info" style="font-size:9px;color:var(--muted);"></span></div>
+      </div>
+      <div class="output" id="diff-out"></div>
+    </div>
+  </div>
+</div>
+
+<!-- JWT TAB -->
+<div class="content" id="tab-jwt">
+  <div class="panel">
+    <div class="pane">
+      <div class="pane-header">
+        <div class="pane-header-title">JWT TOKEN</div>
+        <div class="pane-actions"><button class="pane-btn" onclick="jwtSample()">Sample</button></div>
+      </div>
+      <textarea id="jwt-input" placeholder="eyJ...をペースト..." oninput="jwtDecode()" spellcheck="false" style="max-height:120px;flex:unset;min-height:120px;"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-header"><div class="pane-header-title">DECODED</div></div>
+      <div class="output" id="jwt-out"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+window.switchTab = switchTab;
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el.textContent || el.value;
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+window.copyText = copyText;
+
+// ─── JSON ────────────────────────────────────────────────────────────────────
+function jsonSyntaxHighlight(str) {
+  return str
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*")\s*:/g, '<span class="json-key">$1</span>:')
+    .replace(/:\s*("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*")/g, ': <span class="json-string">$1</span>')
+    .replace(/:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?)/g, ': <span class="json-number">$1</span>')
+    .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>')
+    .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+}
+
+function jsonProcess() {
+  const input = document.getElementById('json-input').value.trim();
+  const out = document.getElementById('json-out');
+  if (!input) { out.innerHTML = ''; document.getElementById('json-info').textContent = '入力待ち'; return; }
+  try {
+    const parsed = JSON.parse(input);
+    const pretty = JSON.stringify(parsed, null, 2);
+    out.innerHTML = jsonSyntaxHighlight(pretty);
+    out.className = 'output success';
+    const keys = JSON.stringify(parsed).match(/"/g) ? JSON.stringify(parsed).match(/":"/g)?.length || 0 : 0;
+    document.getElementById('json-info').textContent = `✓ Valid · ${input.length} chars → ${pretty.length} chars formatted`;
+    document.getElementById('json-status').textContent = '✓ VALID';
+  } catch(e) {
+    out.textContent = `✗ Parse Error:\n${e.message}`;
+    out.className = 'output error';
+    document.getElementById('json-info').textContent = `✗ Error: ${e.message}`;
+    document.getElementById('json-status').textContent = '';
+  }
+}
+window.jsonProcess = jsonProcess;
+
+function jsonFormat() {
+  try {
+    const parsed = JSON.parse(document.getElementById('json-input').value);
+    document.getElementById('json-input').value = JSON.stringify(parsed, null, 2);
+    jsonProcess();
+  } catch(e) {}
+}
+window.jsonFormat = jsonFormat;
+
+function jsonMinify() {
+  try {
+    const parsed = JSON.parse(document.getElementById('json-input').value);
+    document.getElementById('json-input').value = JSON.stringify(parsed);
+    jsonProcess();
+  } catch(e) {}
+}
+window.jsonMinify = jsonMinify;
+
+function jsonSample() {
+  document.getElementById('json-input').value = JSON.stringify({
+    name:'Mira',
+    founded: 2026,
+    team: ['メンバーA','メンバーB','メンバーC','メンバーE','メンバーF'],
+    tech: { lang:'JavaScript', ui:'Canvas', build:'Vite' },
+    active: true, revenue: null
+  });
+  jsonProcess();
+}
+window.jsonSample = jsonSample;
+
+// ─── Regex ────────────────────────────────────────────────────────────────────
+function regexTest() {
+  const pat   = document.getElementById('regex-pat').value;
+  const flags = document.getElementById('regex-flags').value;
+  const text  = document.getElementById('regex-input').value;
+  const out   = document.getElementById('regex-out');
+  if (!pat) { out.textContent = ''; document.getElementById('regex-matches').textContent = 'マッチ: 0'; return; }
+  try {
+    const re = new RegExp(pat, flags.includes('g') ? flags : flags + 'g');
+    const matches = [...text.matchAll(re)];
+    document.getElementById('regex-matches').textContent = `マッチ: ${matches.length}件`;
+    if (matches.length === 0) { out.textContent = 'マッチなし'; out.className='output error'; return; }
+    out.className = 'output';
+    out.innerHTML = matches.map((m, i) => {
+      const groups = m.groups ? JSON.stringify(m.groups, null, 2) : '';
+      return `<div style="margin-bottom:8px;padding:6px 8px;background:rgba(124,58,237,0.08);border-radius:6px;border-left:2px solid #7c3aed;">
+<span style="color:#64748b;font-size:9px;">Match ${i+1} [${m.index}:${m.index+m[0].length}]</span>
+<span style="color:#a78bfa;">  ${m[0].replace(/</g,'&lt;')}</span>${groups ? `\n<span style="color:#64748b;font-size:9px;">Groups: ${groups}</span>` : ''}
+</div>`;
+    }).join('');
+  } catch(e) {
+    out.textContent = `✗ ${e.message}`; out.className='output error';
+    document.getElementById('regex-matches').textContent = `✗ Error`;
+  }
+}
+window.regexTest = regexTest;
+regexTest();
+
+// ─── Base64 ───────────────────────────────────────────────────────────────────
+function b64Encode() {
+  try {
+    const plain = document.getElementById('b64-plain').value;
+    document.getElementById('b64-out').value = btoa(unescape(encodeURIComponent(plain)));
+  } catch(e) {}
+}
+function b64Decode() {
+  try {
+    const b64 = document.getElementById('b64-out').value.trim();
+    document.getElementById('b64-plain').value = decodeURIComponent(escape(atob(b64)));
+  } catch(e) {}
+}
+function b64Sample() {
+  document.getElementById('b64-plain').value = '{"company":"Mira","year":2026}';
+  b64Encode();
+}
+window.b64Encode = b64Encode; window.b64Decode = b64Decode; window.b64Sample = b64Sample;
+document.getElementById('b64-out').addEventListener('input', b64Decode);
+
+// ─── Hash (SubtleCrypto) ──────────────────────────────────────────────────────
+const HASH_ALGOS = ['SHA-1','SHA-256','SHA-384','SHA-512'];
+
+async function computeHashes() {
+  const text = document.getElementById('hash-input').value;
+  const grid = document.getElementById('hash-grid');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+
+  // Simple non-crypto hashes
+  const crc32 = computeCRC32(text);
+  const djb2  = computeDJB2(text);
+
+  const results = [
+    { name:'CRC32',   value: crc32 },
+    { name:'DJB2',    value: djb2 },
+  ];
+
+  for (const algo of HASH_ALGOS) {
+    try {
+      const hash = await crypto.subtle.digest(algo, data);
+      const hex  = Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      results.push({ name: algo, value: hex });
+    } catch(e) {}
+  }
+
+  grid.innerHTML = results.map(r =>
+    `<div class="hash-row">
+      <div class="hash-label">${r.name}</div>
+      <div class="hash-value" onclick="navigator.clipboard.writeText('${r.value}')" title="クリックでコピー">${r.value}</div>
+    </div>`
+  ).join('');
+}
+window.computeHashes = computeHashes;
+
+function computeCRC32(str) {
+  let crc = -1;
+  for (let i=0;i<str.length;i++) {
+    let byte = str.charCodeAt(i);
+    for (let j=0;j<8;j++) {
+      const b = (crc ^ byte) & 1;
+      crc = (crc >>> 1) ^ (b ? 0xEDB88320 : 0);
+      byte >>= 1;
+    }
+  }
+  return ((crc ^ -1) >>> 0).toString(16).padStart(8,'0');
+}
+function computeDJB2(str) {
+  let hash = 5381;
+  for (let i=0;i<str.length;i++) hash = ((hash << 5) + hash) + str.charCodeAt(i);
+  return (hash >>> 0).toString(16).padStart(8,'0');
+}
+computeHashes();
+
+// ─── URL ─────────────────────────────────────────────────────────────────────
+function urlProcess() {
+  const input = document.getElementById('url-input').value.trim();
+  const out   = document.getElementById('url-output');
+  const parsed = document.getElementById('url-parsed');
+
+  const encoded = encodeURIComponent(input);
+  const decoded = (() => { try { return decodeURIComponent(input); } catch{ return input; } })();
+  const encodedFull = (() => { try { return encodeURI(input); } catch{ return input; } })();
+
+  out.innerHTML = `
+    <div class="url-row"><div class="url-label">Encoded</div><div style="font-size:11px;color:#a78bfa;word-break:break-all;cursor:pointer;" onclick="navigator.clipboard.writeText('${encoded.replace(/'/g,"\\'")}');">${encoded}</div></div>
+    <div class="url-row"><div class="url-label">Decoded</div><div style="font-size:11px;color:#4ade80;word-break:break-all;">${decoded.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>
+    <div class="url-row"><div class="url-label">Full URI</div><div style="font-size:11px;color:#fb923c;word-break:break-all;">${encodedFull.replace(/&/g,'&amp;')}</div></div>
+  `;
+
+  try {
+    const url = new URL(input.includes('://') ? input : 'https://' + input);
+    parsed.innerHTML = `<div style="display:flex;flex-direction:column;gap:4px;padding:12px;">` +
+      [['Protocol', url.protocol],['Host', url.hostname],['Port', url.port||'(default)'],
+       ['Path', url.pathname],['Query', url.search],['Hash', url.hash],
+       ['Origin', url.origin]]
+      .map(([k,v]) => `<div style="display:flex;gap:8px;"><span style="color:var(--muted);font-size:9px;width:60px;">${k}</span><span style="color:#e2e8f0;font-size:11px;">${v||'—'}</span></div>`)
+      .join('') + `</div>`;
+  } catch {
+    parsed.textContent = 'URLとして解析不可';
+  }
+}
+window.urlProcess = urlProcess;
+
+// ─── Color ────────────────────────────────────────────────────────────────────
+function colorUpdate() {
+  const hex = document.getElementById('color-picker').value;
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  const [h,s,l] = rgbToHsl(r,g,b);
+
+  document.getElementById('color-swatch').style.background = hex;
+  document.getElementById('contrast-dark').style.color = hex;
+  document.getElementById('contrast-light').style.color = hex;
+
+  const dark_ratio  = getContrastRatio(r,g,b, 0,0,0);
+  const light_ratio = getContrastRatio(r,g,b, 255,255,255);
+  document.getElementById('contrast-ratio').innerHTML =
+    `vs Black: ${dark_ratio.toFixed(2)}:1 ${dark_ratio >= 4.5?'✓ AA':'✗ Fail'} &nbsp;|&nbsp; vs White: ${light_ratio.toFixed(2)}:1 ${light_ratio >= 4.5?'✓ AA':'✗ Fail'}`;
+
+  document.getElementById('color-formats').innerHTML = [
+    ['HEX',  hex],
+    ['RGB',  `rgb(${r}, ${g}, ${b})`],
+    ['HSL',  `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`],
+    ['Tailwind', closestTailwind(r,g,b)],
+  ].map(([k,v]) => `
+    <div class="color-format-row">
+      <div class="color-fmt-label">${k}</div>
+      <div class="color-fmt-val" onclick="navigator.clipboard.writeText('${v}')">${v}</div>
+    </div>`).join('');
+
+  // Palette generation
+  const shades = [0.2, 0.35, 0.5, 0.65, 0.8, 0.95].map(l2 => {
+    const [,,, hr,hg,hb] = [...hslToRgb(h, s/100, l2/100)];
+    return '#' + [hr,hg,hb].map(c=>Math.round(c*255).toString(16).padStart(2,'0')).join('');
+  });
+  document.getElementById('palette-section').innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:6px;padding:4px;">' +
+    shades.map((c,i) => `
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="width:40px;height:28px;border-radius:6px;background:${c};flex-shrink:0;cursor:pointer;" onclick="document.getElementById('color-picker').value='${c}';colorUpdate();"></div>
+        <div style="font-size:10px;color:#a78bfa;cursor:pointer;" onclick="navigator.clipboard.writeText('${c}')">${c}</div>
+        <div style="font-size:9px;color:var(--muted);">${['50','100','200','300','400','500'][i]}</div>
+      </div>`).join('') + '</div>';
+}
+window.colorUpdate = colorUpdate;
+
+function rgbToHsl(r,g,b) {
+  r/=255;g/=255;b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+  if (max===min) return [0,0,l*100];
+  const d=max-min, s=l>0.5?d/(2-max-min):d/(max+min);
+  let h;
+  if (max===r) h=((g-b)/d+(g<b?6:0))/6;
+  else if (max===g) h=((b-r)/d+2)/6;
+  else h=((r-g)/d+4)/6;
+  return [h*360, s*100, l*100];
+}
+function hslToRgb(h,s,l) {
+  const q = l<0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+  const hue2rgb = (p,q,t) => {
+    if (t<0) t+=1; if (t>1) t-=1;
+    if (t<1/6) return p+(q-p)*6*t;
+    if (t<1/2) return q;
+    if (t<2/3) return p+(q-p)*(2/3-t)*6;
+    return p;
+  };
+  return [0, 0, 0, hue2rgb(p,q,h+1/3), hue2rgb(p,q,h), hue2rgb(p,q,h-1/3)];
+}
+function getLuminance(r,g,b) {
+  const [rr,gg,bb] = [r,g,b].map(c => { c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); });
+  return 0.2126*rr+0.7152*gg+0.0722*bb;
+}
+function getContrastRatio(r1,g1,b1, r2,g2,b2) {
+  const l1=getLuminance(r1,g1,b1), l2=getLuminance(r2,g2,b2);
+  const bright=Math.max(l1,l2), dark=Math.min(l1,l2);
+  return (bright+0.05)/(dark+0.05);
+}
+function closestTailwind(r,g,b) {
+  const COLORS = {
+    'violet-600':'#7c3aed','amber-500':'#f59e0b','emerald-500':'#10b981',
+    'blue-500':'#3b82f6','red-500':'#ef4444','slate-400':'#94a3b8',
+  };
+  let best='', bestDist=Infinity;
+  for (const [name, hex] of Object.entries(COLORS)) {
+    const cr=parseInt(hex.slice(1,3),16), cg=parseInt(hex.slice(3,5),16), cb=parseInt(hex.slice(5,7),16);
+    const dist = (r-cr)**2+(g-cg)**2+(b-cb)**2;
+    if (dist < bestDist) { bestDist=dist; best=name; }
+  }
+  return best;
+}
+colorUpdate();
+
+// ─── Diff ─────────────────────────────────────────────────────────────────────
+function computeDiff() {
+  const a = document.getElementById('diff-a').value.split('\n');
+  const b = document.getElementById('diff-b').value.split('\n');
+  const out = document.getElementById('diff-out');
+
+  // Simple line diff (LCS-based)
+  const lcs = buildLCS(a, b);
+  const result = [];
+  let ai=0, bi=0, li=0;
+  let added=0, removed=0;
+
+  while (ai < a.length || bi < b.length) {
+    if (li < lcs.length && ai < a.length && bi < b.length &&
+        a[ai] === lcs[li] && b[bi] === lcs[li]) {
+      result.push(`<div class="diff-line" style="color:rgba(255,255,255,0.4);">&nbsp; ${escHtml(a[ai])}</div>`);
+      ai++; bi++; li++;
+    } else if (ai < a.length && (li >= lcs.length || a[ai] !== lcs[li])) {
+      result.push(`<div class="diff-line diff-removed">- ${escHtml(a[ai])}</div>`);
+      ai++; removed++;
+    } else {
+      result.push(`<div class="diff-line diff-added">+ ${escHtml(b[bi])}</div>`);
+      bi++; added++;
+    }
+  }
+
+  out.innerHTML = result.join('');
+  document.getElementById('diff-info').textContent = `+${added} -${removed}`;
+}
+window.computeDiff = computeDiff;
+
+function buildLCS(a, b) {
+  const m=a.length, n=b.length;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+  let i=m,j=n; const lcs=[];
+  while (i>0&&j>0) {
+    if (a[i-1]===b[j-1]) { lcs.unshift(a[i-1]); i--;j--; }
+    else if (dp[i-1][j]>dp[i][j-1]) i--;
+    else j--;
+  }
+  return lcs;
+}
+
+// ─── JWT ─────────────────────────────────────────────────────────────────────
+function jwtDecode() {
+  const token = document.getElementById('jwt-input').value.trim();
+  const out   = document.getElementById('jwt-out');
+  const parts = token.split('.');
+  if (parts.length !== 3) { out.textContent = '有効なJWTではありません (header.payload.signature の形式)'; out.className='output error'; return; }
+
+  function b64url(s) {
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while (s.length%4) s+='=';
+    try { return JSON.parse(atob(s)); } catch { return atob(s); }
+  }
+
+  const header  = b64url(parts[0]);
+  const payload = b64url(parts[1]);
+
+  let html = '<div style="padding:12px;">';
+  html += '<div style="margin-bottom:12px;"><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">HEADER</div>';
+  html += '<div style="font-size:11px;color:#a78bfa;">' + JSON.stringify(header, null, 2).replace(/</g,'&lt;') + '</div></div>';
+
+  html += '<div style="margin-bottom:12px;"><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">PAYLOAD</div>';
+  if (typeof payload === 'object') {
+    const rows = Object.entries(payload).map(([k,v]) => {
+      let display = JSON.stringify(v);
+      // Convert timestamps
+      if ((k==='exp'||k==='iat'||k==='nbf') && typeof v==='number') {
+        display += ` <span style="color:#64748b;font-size:9px;">(${new Date(v*1000).toLocaleString('ja-JP')})</span>`;
+      }
+      return `<div style="display:flex;gap:8px;margin-bottom:3px;"><span style="color:#64748b;font-size:9px;min-width:60px;">${k}</span><span style="color:#4ade80;font-size:11px;">${display}</span></div>`;
+    }).join('');
+    html += rows;
+  } else {
+    html += `<div style="font-size:11px;color:#4ade80;">${String(payload)}</div>`;
+  }
+  html += '</div>';
+
+  html += '<div><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">SIGNATURE</div>';
+  html += `<div style="font-size:10px;color:#fb923c;word-break:break-all;">${parts[2]}</div>`;
+  html += '<div style="font-size:9px;color:#64748b;margin-top:4px;">⚠ ここではシグネチャ検証は行いません</div></div>';
+  html += '</div>';
+
+  out.innerHTML = html;
+  out.className = 'output';
+}
+window.jwtDecode = jwtDecode;
+
+function jwtSample() {
+  // Sample JWT (not valid signature)
+  const h = btoa(JSON.stringify({alg:'HS256',typ:'JWT'})).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  const p = btoa(JSON.stringify({sub:'demo',name:'Demo User',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600,role:'admin'})).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  document.getElementById('jwt-input').value = `${h}.${p}.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c`;
+  jwtDecode();
+}
+window.jwtSample = jwtSample;
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

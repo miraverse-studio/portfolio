@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>マインドマップ | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root { --bg:#07070f; --text:#e2e8f0; --muted:#94a3b8; --accent:#7c3aed; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; overflow:hidden; height:100vh; }
+
+/* TOOLBAR */
+.toolbar {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:10px 16px; display:flex; align-items:center; gap:8px;
+  background:rgba(7,7,15,0.9); backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid rgba(255,255,255,0.07); border-radius:16px; }
+.title-label { font-size:13px; font-weight:900; flex:1; }
+.tbtn {
+  padding:6px 14px; border-radius:10px; font-size:11px; cursor:pointer; font-family:inherit;
+  border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:var(--muted);
+  transition:all 0.15s;
+}
+.tbtn:hover { color:var(--text); border-color:rgba(255,255,255,0.15); }
+.tbtn.primary { border-color:rgba(124,58,237,0.4); background:rgba(124,58,237,0.1); color:#a78bfa; }
+.tbtn.danger { border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); color:#f87171; }
+
+/* CANVAS */
+#canvas { position:fixed; top:46px; left:0; right:0; bottom:40px; touch-action:none; cursor:grab; }
+#canvas.grabbing { cursor:grabbing; }
+
+/* NODE EDIT OVERLAY */
+.node-edit {
+  position:fixed; z-index:200; background:#1e1e2e; border:1px solid rgba(124,58,237,0.4);
+  border-radius:12px; padding:12px; min-width:200px; box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  display:none;
+}
+.node-edit input {
+  width:100%; background:transparent; border:none; outline:none;
+  color:var(--text); font-family:'Noto Sans JP',sans-serif; font-size:14px; font-weight:700;
+  border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0 8px; margin-bottom:10px;
+}
+.node-edit-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.ne-btn { flex:1; padding:6px; border-radius:8px; font-size:11px; cursor:pointer; font-family:inherit; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:var(--muted); }
+.ne-btn.primary { border-color:rgba(124,58,237,0.4); background:rgba(124,58,237,0.1); color:#a78bfa; }
+.ne-btn.add { border-color:rgba(16,185,129,0.4); background:rgba(16,185,129,0.06); color:#34d399; }
+.ne-btn.del { border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); color:#f87171; }
+
+/* COLOR PILLS */
+.color-pills { display:flex; gap:6px; margin-bottom:10px; }
+.cpill { width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.15s; }
+.cpill.active { border-color:white; transform:scale(1.2); }
+
+/* STATUSBAR */
+.statusbar {
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  padding:8px 16px; font-size:10px; color:rgba(148,163,184,0.4);
+  font-family:'JetBrains Mono',monospace; background:rgba(7,7,15,0.8);
+  border-top:1px solid rgba(255,255,255,0.05);
+  display:flex; gap:20px;
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="title-label">🗺 マインドマップ</div>
+  <button class="tbtn" onclick="zoomReset()">⌖ 中央</button>
+  <button class="tbtn" onclick="exportPNG()">⬇ PNG</button>
+  <button class="tbtn primary" onclick="openRoot()">✏ ルート編集</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="node-edit" id="nodeEdit">
+  <input type="text" id="nodeInput" placeholder="ノードテキスト..." onkeydown="onEditKey(event)">
+  <div class="color-pills" id="colorPills"></div>
+  <div class="node-edit-btns">
+    <button class="ne-btn primary" onclick="saveNodeEdit()">✓ 保存</button>
+    <button class="ne-btn add" onclick="addChildFromEdit()">+ 子ノード</button>
+    <button class="ne-btn del" onclick="deleteNodeFromEdit()">🗑 削除</button>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span id="sb-nodes">ノード数: 1</span>
+  <span id="sb-hint">ダブルタップ：編集 | 長押し：子追加 | ドラッグ：移動 | ピンチ：ズーム</span>
+  <span id="sb-zoom">ズーム: 100%</span>
+</div>
+
+<script>
+const STORAGE_KEY = 'mira-mindmap-v1';
+
+// ─── Node colors ──────────────────────────────────────────────────────────────
+const NODE_COLORS = ['#7c3aed','#10b981','#f59e0b','#3b82f6','#ef4444','#ec4899','#06b6d4'];
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+let graph = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {
+  nodes: [
+    { id:1, text:'Mira', x:0, y:0, color:'#7c3aed', parentId:null },
+    { id:2, text:'AIエージェント受託', x:220, y:-160, color:'#3b82f6', parentId:1 },
+    { id:3, text:'3D/映像コンテンツ', x:260, y:-60, color:'#10b981', parentId:1 },
+    { id:4, text:'ゲーム・メタバース', x:240, y:50, color:'#f59e0b', parentId:1 },
+    { id:5, text:'教育・研修', x:200, y:150, color:'#ec4899', parentId:1 },
+    { id:6, text:'自動化パイプライン', x:220, y:240, color:'#06b6d4', parentId:1 },
+    { id:7, text:'Meshy 3D', x:480, y:-100, color:'#10b981', parentId:3 },
+    { id:8, text:'Blender自動化', x:450, y:-10, color:'#10b981', parentId:3 },
+    { id:9, text:'Claude受託', x:450, y:-200, color:'#3b82f6', parentId:2 },
+    { id:10, text:'エージェント設計', x:460, y:-150, color:'#3b82f6', parentId:2 },
+    { id:11, text:'転スラオフィス', x:450, y:80, color:'#f59e0b', parentId:4 },
+    { id:12, text:'Gemini抽出', x:450, y:200, color:'#06b6d4', parentId:6 },
+  ],
+  nextId: 13,
+};
+
+let canvas, ctx;
+let cam = { x:0, y:0, zoom:1 };
+let drag = null;     // { nodeId, ox, oy }
+let panStart = null; // { cx, cy, mx, my }
+let editNode = null;
+let longPressTimer = null;
+
+// Pinch state
+let pinch = null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('dblclick', onDblClick);
+  canvas.addEventListener('wheel', onWheel, {passive:false});
+  canvas.addEventListener('touchstart', onTouchStart, {passive:false});
+  canvas.addEventListener('touchmove', onTouchMove, {passive:false});
+  canvas.addEventListener('touchend', onTouchEnd, {passive:false});
+  renderColorPills();
+  loop();
+});
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 86;
+}
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(graph)); }
+
+// ─── Coordinate transforms ────────────────────────────────────────────────────
+function worldToScreen(wx, wy) {
+  return {
+    x: canvas.width/2 + (wx + cam.x) * cam.zoom,
+    y: canvas.height/2 + (wy + cam.y) * cam.zoom,
+  };
+}
+function screenToWorld(sx, sy) {
+  return {
+    x: (sx - canvas.width/2) / cam.zoom - cam.x,
+    y: (sy - canvas.height/2) / cam.zoom - cam.y,
+  };
+}
+
+// ─── Node geometry ────────────────────────────────────────────────────────────
+function nodeRect(n) {
+  ctx.font = `${n.parentId === null ? 'bold 900 ' : ''}14px Noto Sans JP, sans-serif`;
+  const tw = ctx.measureText(n.text).width;
+  const pad = n.parentId === null ? 20 : 14;
+  const w = Math.max(tw + pad * 2, 80);
+  const h = n.parentId === null ? 44 : 34;
+  return { x: n.x - w/2, y: n.y - h/2, w, h };
+}
+
+function hitTest(wx, wy) {
+  for (let i = graph.nodes.length - 1; i >= 0; i--) {
+    const n = graph.nodes[i];
+    const r = nodeRect(n);
+    if (wx >= r.x && wx <= r.x+r.w && wy >= r.y && wy <= r.y+r.h) return n;
+  }
+  return null;
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+  draw();
+}
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background dots
+  ctx.fillStyle = 'rgba(255,255,255,0.02)';
+  const gridSize = 40 * cam.zoom;
+  const offX = (cam.x * cam.zoom + W/2) % gridSize;
+  const offY = (cam.y * cam.zoom + H/2) % gridSize;
+  for (let x = offX; x < W; x += gridSize)
+    for (let y = offY; y < H; y += gridSize)
+      ctx.fillRect(x-1, y-1, 2, 2);
+
+  // Edges
+  graph.nodes.forEach(n => {
+    if (!n.parentId) return;
+    const parent = graph.nodes.find(p => p.id === n.parentId);
+    if (!parent) return;
+    const ps = worldToScreen(parent.x, parent.y);
+    const ns = worldToScreen(n.x, n.y);
+    const pr = nodeRect(parent);
+    const nr = nodeRect(n);
+    // Bezier from edge of parent to edge of child
+    const cpx = (ps.x + ns.x) / 2;
+    ctx.beginPath();
+    ctx.moveTo(ps.x, ps.y);
+    ctx.bezierCurveTo(cpx, ps.y, cpx, ns.y, ns.x, ns.y);
+    ctx.strokeStyle = n.color + '60';
+    ctx.lineWidth = 2 * cam.zoom;
+    ctx.stroke();
+  });
+
+  // Nodes
+  graph.nodes.forEach(n => {
+    const s = worldToScreen(n.x, n.y);
+    const r = nodeRect(n);
+    const sw = r.w * cam.zoom, sh = r.h * cam.zoom;
+    const sx = s.x - sw/2, sy = s.y - sh/2;
+    const radius = 10 * cam.zoom;
+    const isRoot = n.parentId === null;
+
+    // Shadow
+    ctx.shadowBlur = (editNode && editNode.id === n.id ? 20 : 8) * cam.zoom;
+    ctx.shadowColor = n.color;
+
+    // Background
+    ctx.beginPath();
+    roundRect(ctx, sx, sy, sw, sh, radius);
+    ctx.fillStyle = isRoot
+      ? n.color
+      : (editNode && editNode.id === n.id ? n.color + '30' : 'rgba(20,20,35,0.9)');
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = n.color + (editNode && editNode.id === n.id ? 'ff' : '80');
+    ctx.lineWidth = (isRoot ? 2 : 1.5) * cam.zoom;
+    ctx.stroke();
+
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+    // Text
+    const fontSize = Math.max(9, (isRoot ? 15 : 13) * cam.zoom);
+    ctx.font = `${isRoot ? '900' : '400'} ${fontSize}px Noto Sans JP, sans-serif`;
+    ctx.fillStyle = isRoot ? '#fff' : n.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Clip text to node
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, sx+2, sy+2, sw-4, sh-4, radius);
+    ctx.clip();
+    ctx.fillText(n.text, s.x, s.y);
+    ctx.restore();
+
+    // Child count dot
+    const children = graph.nodes.filter(c => c.parentId === n.id);
+    if (children.length > 0) {
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      ctx.arc(sx + sw - 6*cam.zoom, sy + 6*cam.zoom, 5*cam.zoom, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${8*cam.zoom}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(children.length, sx + sw - 6*cam.zoom, sy + 6*cam.zoom);
+    }
+  });
+
+  // Status
+  document.getElementById('sb-nodes').textContent = `ノード数: ${graph.nodes.length}`;
+  document.getElementById('sb-zoom').textContent = `ズーム: ${Math.round(cam.zoom*100)}%`;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// ─── Mouse events ─────────────────────────────────────────────────────────────
+let lastClick = 0;
+function onMouseDown(e) {
+  if (e.button !== 0) return;
+  const wp = screenToWorld(e.offsetX, e.offsetY);
+  const node = hitTest(wp.x, wp.y);
+  if (node) {
+    drag = { nodeId: node.id, ox: wp.x - node.x, oy: wp.y - node.y };
+    canvas.classList.add('grabbing');
+  } else {
+    panStart = { cx: cam.x, cy: cam.y, mx: e.clientX, my: e.clientY };
+    canvas.classList.add('grabbing');
+  }
+}
+function onMouseMove(e) {
+  if (drag) {
+    const wp = screenToWorld(e.offsetX, e.offsetY);
+    const node = graph.nodes.find(n => n.id === drag.nodeId);
+    if (node) { node.x = wp.x - drag.ox; node.y = wp.y - drag.oy; }
+  } else if (panStart) {
+    cam.x = panStart.cx + (e.clientX - panStart.mx) / cam.zoom;
+    cam.y = panStart.cy + (e.clientY - panStart.my) / cam.zoom;
+  }
+}
+function onMouseUp(e) {
+  if (drag) { save(); drag = null; }
+  panStart = null;
+  canvas.classList.remove('grabbing');
+}
+function onDblClick(e) {
+  const wp = screenToWorld(e.offsetX, e.offsetY);
+  const node = hitTest(wp.x, wp.y);
+  if (node) openEdit(node, e.clientX, e.clientY);
+}
+function onWheel(e) {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  // Zoom towards cursor
+  const wx = (mx - canvas.width/2) / cam.zoom - cam.x;
+  const wy = (my - canvas.height/2) / cam.zoom - cam.y;
+  cam.zoom = Math.min(4, Math.max(0.2, cam.zoom * factor));
+  cam.x = (mx - canvas.width/2) / cam.zoom - wx;
+  cam.y = (my - canvas.height/2) / cam.zoom - wy;
+}
+
+// ─── Touch events ─────────────────────────────────────────────────────────────
+let touchStartTime = 0;
+function onTouchStart(e) {
+  e.preventDefault();
+  if (e.touches.length === 2) {
+    pinch = {
+      dist: Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY),
+      zoom: cam.zoom,
+      cx: (e.touches[0].clientX+e.touches[1].clientX)/2,
+      cy: (e.touches[0].clientY+e.touches[1].clientY)/2,
+    };
+    drag = null; panStart = null;
+    return;
+  }
+  pinch = null;
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const ox = t.clientX - rect.left, oy = t.clientY - rect.top;
+  const wp = screenToWorld(ox, oy);
+  const node = hitTest(wp.x, wp.y);
+  touchStartTime = Date.now();
+
+  if (node) {
+    drag = { nodeId: node.id, ox: wp.x - node.x, oy: wp.y - node.y, sx: ox, sy: oy, moved: false };
+    longPressTimer = setTimeout(() => {
+      if (drag && !drag.moved) addChildTo(node, t.clientX, t.clientY);
+    }, 600);
+  } else {
+    panStart = { cx: cam.x, cy: cam.y, mx: t.clientX, my: t.clientY };
+  }
+}
+function onTouchMove(e) {
+  e.preventDefault();
+  if (pinch && e.touches.length === 2) {
+    const newDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    const factor = newDist / pinch.dist;
+    const rect = canvas.getBoundingClientRect();
+    const cx = pinch.cx - rect.left, cy = pinch.cy - rect.top;
+    const wx = (cx - canvas.width/2) / cam.zoom - cam.x;
+    const wy = (cy - canvas.height/2) / cam.zoom - cam.y;
+    cam.zoom = Math.min(4, Math.max(0.2, pinch.zoom * factor));
+    cam.x = (cx - canvas.width/2) / cam.zoom - wx;
+    cam.y = (cy - canvas.height/2) / cam.zoom - wy;
+    return;
+  }
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  if (drag) {
+    const ox = t.clientX - rect.left, oy = t.clientY - rect.top;
+    if (Math.abs(ox - drag.sx) > 5 || Math.abs(oy - drag.sy) > 5) {
+      drag.moved = true;
+      clearTimeout(longPressTimer);
+    }
+    if (drag.moved) {
+      const wp = screenToWorld(ox, oy);
+      const node = graph.nodes.find(n => n.id === drag.nodeId);
+      if (node) { node.x = wp.x - drag.ox; node.y = wp.y - drag.oy; }
+    }
+  } else if (panStart) {
+    cam.x = panStart.cx + (t.clientX - panStart.mx) / cam.zoom;
+    cam.y = panStart.cy + (t.clientY - panStart.my) / cam.zoom;
+  }
+}
+function onTouchEnd(e) {
+  e.preventDefault();
+  clearTimeout(longPressTimer);
+  if (drag && !drag.moved) {
+    // Check double tap
+    const now = Date.now();
+    if (now - lastClick < 300) {
+      const t = e.changedTouches[0];
+      const rect = canvas.getBoundingClientRect();
+      const ox = t.clientX - rect.left, oy = t.clientY - rect.top;
+      const wp = screenToWorld(ox, oy);
+      const node = hitTest(wp.x, wp.y);
+      if (node) openEdit(node, t.clientX, t.clientY);
+    }
+    lastClick = now;
+    save();
+  } else if (drag && drag.moved) {
+    save();
+  }
+  drag = null; panStart = null;
+  if (e.touches.length === 0) pinch = null;
+}
+
+// ─── Node edit overlay ────────────────────────────────────────────────────────
+function openEdit(node, clientX, clientY) {
+  editNode = node;
+  const el = document.getElementById('nodeEdit');
+  document.getElementById('nodeInput').value = node.text;
+  el.style.display = 'block';
+  // Position near click but keep in viewport
+  let x = clientX + 10, y = clientY - 20;
+  if (x + 240 > window.innerWidth) x = clientX - 250;
+  if (y + 140 > window.innerHeight) y = clientY - 150;
+  el.style.left = Math.max(8, x) + 'px';
+  el.style.top = Math.max(50, y) + 'px';
+  document.getElementById('nodeInput').focus();
+  updateColorPillsActive();
+}
+
+function openRoot() {
+  const root = graph.nodes.find(n => n.parentId === null);
+  if (root) openEdit(root, canvas.width/2, canvas.height/2);
+}
+window.openRoot = openRoot;
+
+function closeEdit() { document.getElementById('nodeEdit').style.display='none'; editNode=null; }
+
+function saveNodeEdit() {
+  if (!editNode) return;
+  editNode.text = document.getElementById('nodeInput').value.trim() || editNode.text;
+  save(); closeEdit();
+}
+window.saveNodeEdit = saveNodeEdit;
+
+function addChildFromEdit() {
+  if (!editNode) return;
+  saveNodeEdit();
+  addChildTo(editNode, 0, 0);
+}
+window.addChildFromEdit = addChildFromEdit;
+
+function addChildTo(parent, cx, cy) {
+  // Spread children radially
+  const siblings = graph.nodes.filter(n => n.parentId === parent.id);
+  const angle = siblings.length === 0 ? 0 : (Math.PI * 2 / Math.max(siblings.length + 1, 4)) * siblings.length;
+  const dist = parent.parentId === null ? 200 : 150;
+  const newNode = {
+    id: graph.nextId++,
+    text: '新しいノード',
+    x: parent.x + Math.cos(angle) * dist,
+    y: parent.y + Math.sin(angle) * dist,
+    color: NODE_COLORS[(graph.nodes.length) % NODE_COLORS.length],
+    parentId: parent.id,
+  };
+  graph.nodes.push(newNode);
+  save();
+  // Immediately open edit
+  const s = worldToScreen(newNode.x, newNode.y);
+  openEdit(newNode, s.x, s.y + 50);
+}
+window.addChildTo = addChildTo;
+
+function deleteNodeFromEdit() {
+  if (!editNode || editNode.parentId === null) return; // Can't delete root
+  if (!confirm('このノードとその子ノードを削除しますか？')) return;
+  // Delete recursively
+  function collect(id) {
+    const ids = [id];
+    graph.nodes.filter(n => n.parentId === id).forEach(c => ids.push(...collect(c.id)));
+    return ids;
+  }
+  const toDelete = collect(editNode.id);
+  graph.nodes = graph.nodes.filter(n => !toDelete.includes(n.id));
+  save(); closeEdit();
+}
+window.deleteNodeFromEdit = deleteNodeFromEdit;
+
+function onEditKey(e) {
+  if (e.key === 'Enter') saveNodeEdit();
+  if (e.key === 'Escape') closeEdit();
+}
+window.onEditKey = onEditKey;
+
+// ─── Color pills ──────────────────────────────────────────────────────────────
+function renderColorPills() {
+  const el = document.getElementById('colorPills');
+  el.innerHTML = NODE_COLORS.map((c,i) =>
+    `<div class="cpill" style="background:${c};" onclick="setNodeColor('${c}')"></div>`
+  ).join('');
+}
+function updateColorPillsActive() {
+  if (!editNode) return;
+  document.querySelectorAll('.cpill').forEach(p => {
+    p.className = 'cpill' + (p.style.background === editNode.color ? ' active' : '');
+  });
+}
+function setNodeColor(c) {
+  if (!editNode) return;
+  editNode.color = c;
+  updateColorPillsActive();
+  save();
+}
+window.setNodeColor = setNodeColor;
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
+function zoomReset() {
+  cam.x = 0; cam.y = 0; cam.zoom = 1;
+}
+window.zoomReset = zoomReset;
+
+function exportPNG() {
+  const link = document.createElement('a');
+  link.download = 'mindmap-mira-corp.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+window.exportPNG = exportPNG;
+
+// Click outside to close edit
+document.addEventListener('click', e => {
+  const ed = document.getElementById('nodeEdit');
+  if (ed.style.display !== 'none' && !ed.contains(e.target) && e.target !== canvas) closeEdit();
+});
+</script>
+</body>
+</html>

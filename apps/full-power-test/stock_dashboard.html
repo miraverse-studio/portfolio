@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ポートフォリオ | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.03); --b1:rgba(255,255,255,0.06);
+  --text:#e2e8f0; --muted:#64748b; --accent:#7c3aed;
+  --green:#10b981; --red:#ef4444; --gold:#f59e0b; --blue:#3b82f6;
+}
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; }
+
+/* NAV */
+.nav { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--b1); position:sticky; top:0; z-index:50; background:rgba(7,7,15,0.9); backdrop-filter:blur(12px); }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-title { font-size:15px; font-weight:900; flex:1; }
+.live-badge { font-size:9px; padding:3px 9px; border-radius:10px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2); color:#34d399; font-family:'JetBrains Mono',monospace; }
+.nav-time { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+
+/* SUMMARY */
+.summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:16px 20px; }
+@media(max-width:600px) { .summary { grid-template-columns:repeat(2,1fr); } }
+.sum-card { background:var(--s1); border:1px solid var(--b1); border-radius:14px; padding:14px; }
+.sum-label { font-size:10px; color:var(--muted); margin-bottom:6px; font-family:'JetBrains Mono',monospace; }
+.sum-value { font-size:24px; font-weight:900; font-family:'JetBrains Mono',monospace; }
+.sum-change { font-size:11px; margin-top:4px; font-family:'JetBrains Mono',monospace; }
+.up { color:var(--green); } .dn { color:var(--red); }
+
+/* CHART AREA */
+.chart-section { margin:0 20px 16px; }
+.chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.chart-title { font-size:12px; font-weight:700; }
+.period-btns { display:flex; gap:4px; }
+.period-btn { font-size:10px; padding:3px 10px; border-radius:8px; cursor:pointer; border:1px solid var(--b1); background:transparent; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.period-btn.active { border-color:rgba(124,58,237,0.4); color:#a78bfa; background:rgba(124,58,237,0.08); }
+.chart-wrap { position:relative; }
+canvas#mainChart { width:100%; border-radius:12px; background:var(--s1); border:1px solid var(--b1); }
+
+/* HOLDINGS TABLE */
+.holdings { padding:0 20px 16px; }
+.h-title { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:0.1em; margin-bottom:10px; }
+.h-row { display:grid; grid-template-columns:40px 1fr 80px 80px 60px; gap:8px; align-items:center; padding:10px 12px; border-radius:10px; background:var(--s1); border:1px solid var(--b1); margin-bottom:6px; transition:border-color 0.2s; cursor:default; }
+.h-row:hover { border-color:rgba(124,58,237,0.25); }
+.h-icon { font-size:22px; text-align:center; }
+.h-name { font-weight:700; font-size:13px; }
+.h-ticker { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.h-price { font-family:'JetBrains Mono',monospace; font-size:12px; text-align:right; }
+.h-change { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; text-align:right; padding:3px 7px; border-radius:6px; }
+.h-change.up { background:rgba(16,185,129,0.1); }
+.h-change.dn { background:rgba(239,68,68,0.1); }
+.h-bar-wrap { width:100%; height:3px; background:rgba(255,255,255,0.05); border-radius:2px; margin-top:3px; overflow:hidden; }
+.h-bar { height:100%; border-radius:2px; transition:width 0.8s ease; }
+.h-alloc { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; text-align:right; }
+
+/* MINI CHARTS row */
+.mini-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:0 20px 16px; }
+@media(max-width:500px) { .mini-row { grid-template-columns:1fr 1fr; } }
+.mini-card { background:var(--s1); border:1px solid var(--b1); border-radius:12px; padding:12px; }
+.mini-name { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-bottom:6px; }
+.mini-price { font-size:14px; font-weight:900; font-family:'JetBrains Mono',monospace; }
+.mini-chg { font-size:10px; margin-top:2px; font-family:'JetBrains Mono',monospace; }
+canvas.sparkline { width:100%; height:36px; margin-top:6px; }
+
+/* NEWS / ALERTS */
+.alerts { padding:0 20px 32px; }
+.alert-item { display:flex; gap:10px; padding:10px 12px; border-radius:10px; background:var(--s1); border:1px solid var(--b1); margin-bottom:6px; align-items:flex-start; }
+.alert-icon { font-size:16px; }
+.alert-text { font-size:11px; line-height:1.5; flex:1; }
+.alert-time { font-size:9px; color:var(--muted); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-title">📈 ポートフォリオ</div>
+  <div class="live-badge">● LIVE SIM</div>
+  <div class="nav-time" id="navTime"></div>
+</div>
+
+<div class="summary">
+  <div class="sum-card">
+    <div class="sum-label">TOTAL VALUE</div>
+    <div class="sum-value" style="color:#a78bfa;" id="s-total">¥0</div>
+    <div class="sum-change" id="s-total-chg">—</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">TODAY P&L</div>
+    <div class="sum-value up" id="s-pnl">+¥0</div>
+    <div class="sum-change" id="s-pnl-pct">+0.00%</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">BEST PICK</div>
+    <div class="sum-value" style="color:#f59e0b;" id="s-best">—</div>
+    <div class="sum-change up" id="s-best-pct">—</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">UNREALIZED</div>
+    <div class="sum-value up" id="s-unreal">+¥0</div>
+    <div class="sum-change" id="s-unreal-pct">cost avg vs now</div>
+  </div>
+</div>
+
+<div class="chart-section">
+  <div class="chart-header">
+    <div class="chart-title">ポートフォリオ推移</div>
+    <div class="period-btns">
+      <button class="period-btn active" onclick="setPeriod(1,'1D',this)">1D</button>
+      <button class="period-btn" onclick="setPeriod(5,'1W',this)">1W</button>
+      <button class="period-btn" onclick="setPeriod(22,'1M',this)">1M</button>
+      <button class="period-btn" onclick="setPeriod(90,'3M',this)">3M</button>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="mainChart" height="200"></canvas>
+  </div>
+</div>
+
+<div class="holdings">
+  <div class="h-title">HOLDINGS</div>
+  <div id="holdingsList"></div>
+</div>
+
+<div class="mini-row" id="miniRow"></div>
+
+<div class="alerts">
+  <div class="h-title">MARKET ALERTS</div>
+  <div id="alertsList"></div>
+</div>
+
+<script>
+// ─── Portfolio data (simulated, no real market data) ──────────────────────────
+const HOLDINGS = [
+  { ticker:'NVDA', name:'NVIDIA',      icon:'🟢', qty:10,   cost:850,    color:'#22c55e' },
+  { ticker:'MSFT', name:'Microsoft',   icon:'🔵', qty:20,   cost:380,    color:'#3b82f6' },
+  { ticker:'TSLA', name:'Tesla',       icon:'🔴', qty:15,   cost:200,    color:'#ef4444' },
+  { ticker:'BTC',  name:'Bitcoin',     icon:'🟡', qty:0.5,  cost:55000,  color:'#f59e0b' },
+  { ticker:'ETH',  name:'Ethereum',    icon:'🟣', qty:3,    cost:2800,   color:'#a78bfa' },
+  { ticker:'AAPL', name:'Apple',       icon:'⚪', qty:25,   cost:175,    color:'#94a3b8' },
+];
+
+const INDICES = [
+  { name:'NIKKEI 225', base:38500, vol:0.008, color:'#f59e0b' },
+  { name:'S&P 500',    base:5200,  vol:0.006, color:'#3b82f6' },
+  { name:'BTC/USD',    base:67000, vol:0.02,  color:'#f97316' },
+];
+
+// ─── Price simulation ─────────────────────────────────────────────────────────
+const BASE_PRICES = { NVDA:1050, MSFT:420, TSLA:175, BTC:67000, ETH:3500, AAPL:193 };
+let prices = { ...BASE_PRICES };
+let priceHistory = {}; // ticker -> [prices]
+let portfolioHistory = [];  // total value over time
+let periodDays = 1;
+
+// Seeded random for reproducible simulation
+function seededRng(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function generateHistory(days) {
+  const steps = days * 78;  // 78 5-min candles per day
+  const rng = seededRng(42);
+  HOLDINGS.forEach(h => {
+    priceHistory[h.ticker] = [BASE_PRICES[h.ticker]];
+    for (let i = 0; i < steps; i++) {
+      const last = priceHistory[h.ticker][priceHistory[h.ticker].length - 1];
+      const vol = h.ticker === 'BTC' ? 0.015 : h.ticker === 'ETH' ? 0.012 : 0.006;
+      const change = 1 + (rng() - 0.48) * vol;
+      priceHistory[h.ticker].push(Math.max(0.01, last * change));
+    }
+    prices[h.ticker] = priceHistory[h.ticker][priceHistory[h.ticker].length - 1];
+  });
+
+  // Portfolio history
+  portfolioHistory = [];
+  const maxLen = Math.max(...Object.values(priceHistory).map(h => h.length));
+  for (let i = 0; i < maxLen; i++) {
+    let total = 0;
+    HOLDINGS.forEach(h => {
+      const hist = priceHistory[h.ticker];
+      const p = hist[Math.min(i, hist.length-1)];
+      total += p * h.qty;
+    });
+    portfolioHistory.push(total);
+  }
+}
+generateHistory(1);
+
+// ─── Tick simulation ──────────────────────────────────────────────────────────
+function tick() {
+  HOLDINGS.forEach(h => {
+    const vol = h.ticker === 'BTC' ? 0.008 : h.ticker === 'ETH' ? 0.006 : 0.003;
+    prices[h.ticker] *= 1 + (Math.random() - 0.49) * vol;
+    priceHistory[h.ticker].push(prices[h.ticker]);
+  });
+  let total = 0;
+  HOLDINGS.forEach(h => { total += prices[h.ticker] * h.qty; });
+  portfolioHistory.push(total);
+
+  updateSummary();
+  renderHoldings();
+  drawMainChart();
+  updateMini();
+}
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
+function fmtY(v) {
+  if (Math.abs(v) >= 1000000) return '¥' + (v/1000000).toFixed(2) + 'M';
+  if (Math.abs(v) >= 1000)    return '¥' + (v/1000).toFixed(1) + 'K';
+  return '¥' + v.toFixed(0);
+}
+
+function updateSummary() {
+  const total    = HOLDINGS.reduce((s, h) => s + prices[h.ticker] * h.qty, 0);
+  const totalCost= HOLDINGS.reduce((s, h) => s + h.cost * h.qty, 0);
+  const openVal  = portfolioHistory[0] || total;
+  const pnl      = total - openVal;
+  const pnlPct   = pnl / openVal * 100;
+  const unreal   = total - totalCost;
+
+  document.getElementById('s-total').textContent = fmtY(total);
+  const chgClass = pnl >= 0 ? 'up' : 'dn';
+  document.getElementById('s-pnl').className = 'sum-value ' + chgClass;
+  document.getElementById('s-pnl').textContent = (pnl >= 0 ? '+' : '') + fmtY(pnl);
+  document.getElementById('s-pnl-pct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
+  document.getElementById('s-pnl-pct').className = 'sum-change ' + chgClass;
+
+  // Best performer
+  let best = HOLDINGS[0], bestPct = -Infinity;
+  HOLDINGS.forEach(h => {
+    const pct = (prices[h.ticker] - h.cost) / h.cost * 100;
+    if (pct > bestPct) { bestPct = pct; best = h; }
+  });
+  document.getElementById('s-best').textContent = best.ticker;
+  document.getElementById('s-best-pct').textContent = '+' + bestPct.toFixed(1) + '%';
+
+  const realClass = unreal >= 0 ? 'up' : 'dn';
+  document.getElementById('s-unreal').className = 'sum-value ' + realClass;
+  document.getElementById('s-unreal').textContent = (unreal >= 0 ? '+' : '') + fmtY(unreal);
+  document.getElementById('s-unreal-pct').textContent = ((unreal/totalCost)*100).toFixed(1) + '% total return';
+}
+
+// ─── Holdings table ───────────────────────────────────────────────────────────
+function renderHoldings() {
+  const total = HOLDINGS.reduce((s, h) => s + prices[h.ticker] * h.qty, 0);
+  const list  = document.getElementById('holdingsList');
+
+  list.innerHTML = HOLDINGS.map(h => {
+    const price = prices[h.ticker];
+    const value = price * h.qty;
+    const chgPct = (price - h.cost) / h.cost * 100;
+    const alloc  = value / total * 100;
+    const up     = chgPct >= 0;
+    const priceStr = price >= 1000 ? '$' + price.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                                   : '$' + price.toFixed(2);
+    return `<div class="h-row">
+      <div class="h-icon">${h.icon}</div>
+      <div>
+        <div class="h-name">${h.ticker}</div>
+        <div class="h-ticker">${h.name}</div>
+        <div class="h-bar-wrap"><div class="h-bar" style="width:${alloc}%;background:${h.color};"></div></div>
+      </div>
+      <div>
+        <div class="h-price">${priceStr}</div>
+        <div class="h-ticker" style="font-size:9px;">${fmtY(value)}</div>
+      </div>
+      <div class="h-change ${up?'up':'dn'}" style="color:${up?'#34d399':'#f87171'};">${up?'+':''}${chgPct.toFixed(2)}%</div>
+      <div class="h-alloc">${alloc.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Main chart ───────────────────────────────────────────────────────────────
+function drawMainChart() {
+  const canvas = document.getElementById('mainChart');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.offsetWidth * (window.devicePixelRatio || 1);
+  const H = canvas.offsetHeight * (window.devicePixelRatio || 1);
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  const data = portfolioHistory;
+  if (data.length < 2) return;
+
+  const minV = Math.min(...data) * 0.998;
+  const maxV = Math.max(...data) * 1.002;
+  const range = maxV - minV;
+
+  const padL = 10, padR = 10, padT = 10, padB = 24;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = padT + chartH * (i/4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+  }
+
+  // Price line
+  const pts = data.map((v, i) => ({
+    x: padL + (i / (data.length-1)) * chartW,
+    y: padT + (1 - (v - minV) / range) * chartH,
+  }));
+
+  // Fill gradient
+  const startVal = data[0], endVal = data[data.length-1];
+  const isUp = endVal >= startVal;
+  const grad = ctx.createLinearGradient(0, padT, 0, H - padB);
+  grad.addColorStop(0, isUp ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.2)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H - padB);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H - padB);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle = isUp ? '#10b981' : '#ef4444';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Y-axis labels
+  ctx.fillStyle = 'rgba(148,163,184,0.5)';
+  ctx.font = `${Math.round(9 * (window.devicePixelRatio||1))}px JetBrains Mono`;
+  ctx.textAlign = 'left';
+  [0, 0.5, 1].forEach(t => {
+    const v = minV + range * (1 - t);
+    const y = padT + chartH * t;
+    ctx.fillText(fmtY(v), padL + 4, y + 4);
+  });
+}
+
+// ─── Mini sparklines ──────────────────────────────────────────────────────────
+function updateMini() {
+  const row = document.getElementById('miniRow');
+  if (row.children.length === 0) {
+    INDICES.forEach((idx, i) => {
+      const card = document.createElement('div');
+      card.className = 'mini-card';
+      card.innerHTML = `
+        <div class="mini-name">${idx.name}</div>
+        <div class="mini-price" id="mi-p${i}" style="color:${idx.color};">—</div>
+        <div class="mini-chg" id="mi-c${i}">—</div>
+        <canvas class="sparkline" id="mi-cv${i}" height="36"></canvas>
+      `;
+      row.appendChild(card);
+    });
+  }
+
+  const rng = seededRng(Date.now() & 0xffff);
+  INDICES.forEach((idx, i) => {
+    // Generate sparkline
+    const hist = [idx.base];
+    for (let j = 0; j < 40; j++) {
+      hist.push(hist[hist.length-1] * (1 + (rng() - 0.48) * idx.vol));
+    }
+    const now = hist[hist.length-1];
+    const chg = (now - idx.base) / idx.base * 100;
+    const up  = chg >= 0;
+
+    const pEl = document.getElementById('mi-p' + i);
+    const cEl = document.getElementById('mi-c' + i);
+    if (pEl) pEl.textContent = now >= 1000 ? now.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : now.toFixed(2);
+    if (cEl) { cEl.textContent = (up?'+':'') + chg.toFixed(2) + '%'; cEl.className = 'mini-chg ' + (up?'up':'dn'); }
+
+    const cv = document.getElementById('mi-cv' + i);
+    if (!cv) return;
+    const W2 = cv.offsetWidth * (window.devicePixelRatio||1);
+    const H2 = cv.offsetHeight * (window.devicePixelRatio||1);
+    cv.width = W2; cv.height = H2;
+    const c2 = cv.getContext('2d');
+    const min2 = Math.min(...hist), max2 = Math.max(...hist);
+    const r2 = max2 - min2 || 1;
+    const pts2 = hist.map((v,j) => ({ x: j/(hist.length-1)*W2, y: (1-(v-min2)/r2)*H2*0.85+H2*0.05 }));
+    c2.beginPath();
+    pts2.forEach((p,j) => j===0 ? c2.moveTo(p.x,p.y) : c2.lineTo(p.x,p.y));
+    c2.strokeStyle = idx.color;
+    c2.lineWidth = 1.5;
+    c2.stroke();
+  });
+}
+
+// ─── Alerts ───────────────────────────────────────────────────────────────────
+const ALERTS = [
+  { icon:'🚀', text:'NVDA が直近52週高値を更新。決算発表を控え機関投資家の買いが続く', time:'2分前' },
+  { icon:'⚠️', text:'BTC/JPY が1時間で2.5%急落。取引量増加により市場ボラティリティが上昇', time:'8分前' },
+  { icon:'📊', text:'米国CPIが予想を下回る。FRB利下げ観測が高まりグロース株に追い風', time:'1時間前' },
+  { icon:'💡', text:'TSLA の自動運転規制が緩和へ。EV補助金延長も検討、中期的に強気', time:'2時間前' },
+  { icon:'🌐', text:'日経225 が前日比+1.2%で引け。円安進行による輸出株の上昇が全体を牽引', time:'3時間前' },
+];
+document.getElementById('alertsList').innerHTML = ALERTS.map(a =>
+  `<div class="alert-item">
+    <div class="alert-icon">${a.icon}</div>
+    <div class="alert-text">${a.text}</div>
+    <div class="alert-time">${a.time}</div>
+  </div>`
+).join('');
+
+// ─── Period selector ─────────────────────────────────────────────────────────
+function setPeriod(days, label, btn) {
+  periodDays = days;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  generateHistory(days);
+  drawMainChart();
+  updateSummary();
+}
+window.setPeriod = setPeriod;
+
+// ─── Clock ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('navTime').textContent = now.toLocaleTimeString('ja-JP');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+updateSummary();
+renderHoldings();
+updateMini();
+
+// Trigger initial chart draw after layout
+requestAnimationFrame(() => { requestAnimationFrame(drawMainChart); });
+
+// Simulate live ticks every 3 seconds
+setInterval(tick, 3000);
+window.addEventListener('resize', drawMainChart);
+</script>
+</body>
+</html>

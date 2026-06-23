@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>データ管理 | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#07070f; color:#e2e8f0;
+  font-family:'Noto Sans JP','Hiragino Sans',sans-serif;
+  min-height:100vh; padding:32px 24px;
+}
+h1 {
+  font-size:18px; color:#a78bfa; margin-bottom:4px; font-family:'JetBrains Mono',monospace;
+  letter-spacing:0.1em;
+}
+.subtitle { font-size:12px; color:#64748b; margin-bottom:32px; }
+.back { display:inline-block; font-size:11px; color:#64748b; text-decoration:none;
+  padding:4px 10px; border:1px solid rgba(255,255,255,0.08); border-radius:12px;
+  margin-bottom:24px; }
+.back:hover { color:#e2e8f0; }
+.section { margin-bottom:32px; }
+.section-title { font-size:13px; color:#94a3b8; margin-bottom:12px;
+  font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; }
+.key-list { display:flex; flex-direction:column; gap:8px; }
+.key-row {
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px; padding:12px 16px;
+}
+.key-info { flex:1; }
+.key-name { font-size:13px; font-family:'JetBrains Mono',monospace; color:#c4b5fd; }
+.key-size { font-size:11px; color:#64748b; margin-top:2px; }
+.key-empty { font-size:11px; color:#374151; margin-top:2px; font-style:italic; }
+.btn-del {
+  font-size:11px; padding:5px 14px; border-radius:10px; cursor:pointer;
+  border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.05);
+  color:#f87171; font-family:'JetBrains Mono',monospace; transition:all 0.2s;
+  flex-shrink:0;
+}
+.btn-del:hover { background:rgba(239,68,68,0.15); border-color:#f87171; }
+.btn-del:disabled { opacity:0.3; cursor:not-allowed; }
+.danger-zone {
+  background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2);
+  border-radius:14px; padding:20px; margin-top:8px;
+}
+.btn-danger {
+  width:100%; padding:12px; font-size:13px; font-family:'JetBrains Mono',monospace;
+  background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4);
+  color:#f87171; border-radius:10px; cursor:pointer; margin-bottom:12px;
+  transition:all 0.2s; letter-spacing:0.05em;
+}
+.btn-danger:hover { background:rgba(239,68,68,0.2); }
+.btn-sw {
+  width:100%; padding:12px; font-size:13px; font-family:'JetBrains Mono',monospace;
+  background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3);
+  color:#fbbf24; border-radius:10px; cursor:pointer; margin-bottom:8px;
+  transition:all 0.2s; letter-spacing:0.05em;
+}
+.btn-sw:hover { background:rgba(245,158,11,0.18); }
+.log {
+  background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px; padding:16px; margin-top:20px;
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:#4ade80;
+  min-height:80px; max-height:200px; overflow-y:auto; line-height:1.8;
+}
+.log-empty { color:#374151; font-style:italic; }
+.badge { display:inline-block; font-size:10px; padding:2px 8px; border-radius:8px;
+  font-family:'JetBrains Mono',monospace; margin-left:8px; }
+.badge-data { background:rgba(124,58,237,0.15); color:#a78bfa; }
+.badge-empty { background:rgba(100,116,139,0.15); color:#64748b; }
+.total { font-size:12px; color:#64748b; margin-top:8px; font-family:'JetBrains Mono',monospace; }
+</style>
+</head>
+<body>
+<a href="index.html" class="back">← HOME</a>
+<h1>DATA MANAGER</h1>
+<div class="subtitle">localStorage の確認・削除 · Service Worker のアンインストール</div>
+
+<div class="section">
+  <div class="section-title">■ LOCALSTORAGE KEYS</div>
+  <div class="key-list" id="keyList">読み込み中...</div>
+  <div class="total" id="totalSize"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">■ DANGER ZONE</div>
+  <div class="danger-zone">
+    <button class="btn-danger" onclick="deleteAll()">🗑 localStorage を全て削除</button>
+    <button class="btn-sw" onclick="unregisterSW()">⚙ Service Worker をアンインストール</button>
+    <div style="font-size:11px;color:#92400e;line-height:1.7;">
+      ⚠ 全削除を実行すると、全アプリの保存データが消えます。<br>
+      Service Worker 削除後は、各ページを再読み込みするとキャッシュが再構築されます。
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">■ OPERATION LOG</div>
+  <div class="log" id="log"><span class="log-empty">操作ログはここに表示されます</span></div>
+</div>
+
+<script>
+// Known keys for this project
+const KNOWN_KEYS = [
+  { key: 'mira-kanban-v1',    app: 'タスクボード (kanban.html)' },
+  { key: 'mira-meshy-credits-v1', app: 'Meshyクレジット (meshy_credits.html)' },
+  { key: 'mira-revenue-v1',   app: '収益ダッシュボード (revenue.html)' },
+  { key: 'mira-memo-v1',      app: 'メモ帳 (memo.html)' },
+  { key: 'mira-expense-v1',   app: '経費管理 (expense.html)' },
+  { key: 'mira-goals-v1',     app: 'OKRトラッカー (goals.html)' },
+  { key: 'mira-pomo-v1',      app: 'ポモドーロ (pomodoro.html)' },
+  { key: 'mira-heatmap-v1',   app: '活動ヒートマップ (heatmap.html)' },
+  { key: 'mira-mindmap-v1',   app: 'マインドマップ (mindmap.html)' },
+  { key: 'mira-pixel-v1',     app: 'ピクセルアート (pixel_art.html)' },
+  { key: 'mira-typing-v1',    app: 'タイピングテスト (typing.html)' },
+  { key: 'mira-habits-v1',    app: '習慣トラッカー (habit.html)' },
+];
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + 'B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + 'KB';
+  return (n/1024/1024).toFixed(2) + 'MB';
+}
+
+function getSize(key) {
+  const val = localStorage.getItem(key);
+  if (val === null) return null;
+  return new Blob([val]).size;
+}
+
+function addLog(msg) {
+  const el = document.getElementById('log');
+  const empty = el.querySelector('.log-empty');
+  if (empty) empty.remove();
+  const now = new Date().toLocaleTimeString('ja-JP');
+  el.innerHTML += `<div>[${now}] ${escHtml(msg)}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderKeys() {
+  const list = document.getElementById('keyList');
+  list.innerHTML = '';
+
+  // Show all known keys
+  let totalSize = 0;
+  let dataCount = 0;
+
+  KNOWN_KEYS.forEach(({key, app}) => {
+    const size = getSize(key);
+    const hasData = size !== null;
+    if (hasData) { totalSize += size; dataCount++; }
+
+    const row = document.createElement('div');
+    row.className = 'key-row';
+    row.innerHTML = `
+      <div class="key-info">
+        <div class="key-name">${escHtml(key)}
+          <span class="badge ${hasData ? 'badge-data' : 'badge-empty'}">${hasData ? '保存済み' : '空'}</span>
+        </div>
+        <div class="${hasData ? 'key-size' : 'key-empty'}">
+          ${hasData ? escHtml(formatBytes(size)) + ' · ' + escHtml(app) : escHtml(app)}
+        </div>
+      </div>
+      <button class="btn-del" onclick="deleteKey('${escHtml(key)}')" ${hasData ? '' : 'disabled'}>削除</button>
+    `;
+    list.appendChild(row);
+  });
+
+  // Also show unknown keys
+  const allKeys = Object.keys(localStorage);
+  const knownSet = new Set(KNOWN_KEYS.map(k => k.key));
+  allKeys.filter(k => !knownSet.has(k)).forEach(key => {
+    const size = getSize(key);
+    if (size !== null) { totalSize += size; dataCount++; }
+    const row = document.createElement('div');
+    row.className = 'key-row';
+    row.style.borderColor = 'rgba(245,158,11,0.2)';
+    row.innerHTML = `
+      <div class="key-info">
+        <div class="key-name">${escHtml(key)}
+          <span class="badge badge-data" style="background:rgba(245,158,11,0.15);color:#fbbf24;">不明</span>
+        </div>
+        <div class="key-size">${escHtml(formatBytes(size ?? 0))} · このプロジェクト外のキー</div>
+      </div>
+      <button class="btn-del" onclick="deleteKey('${escHtml(key)}')">削除</button>
+    `;
+    list.appendChild(row);
+  });
+
+  if (KNOWN_KEYS.length === 0 && allKeys.length === 0) {
+    list.innerHTML = '<div style="color:#374151;font-size:12px;font-style:italic;padding:12px;">localStorageは空です</div>';
+  }
+
+  document.getElementById('totalSize').textContent =
+    `合計: ${dataCount} キー / ${formatBytes(totalSize)}`;
+}
+
+function deleteKey(key) {
+  if (!confirm(`「${key}」を削除しますか？\nこの操作は元に戻せません。`)) return;
+  localStorage.removeItem(key);
+  addLog(`削除: ${key}`);
+  renderKeys();
+}
+
+window.deleteKey = deleteKey;
+
+function deleteAll() {
+  if (!confirm('全ての localStorage データを削除しますか？\n\n全アプリの保存データが消えます。\nこの操作は元に戻せません。')) return;
+  const keys = Object.keys(localStorage);
+  keys.forEach(k => localStorage.removeItem(k));
+  addLog(`全削除: ${keys.length} キーを削除しました`);
+  renderKeys();
+}
+window.deleteAll = deleteAll;
+
+function unregisterSW() {
+  if (!confirm('Service Worker をアンインストールしますか？\n\nキャッシュが削除され、次回ページ読み込み時に再構築されます。')) return;
+  if (!('serviceWorker' in navigator)) {
+    addLog('Service Worker 非対応ブラウザです');
+    return;
+  }
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    if (regs.length === 0) { addLog('登録済み Service Worker は見つかりませんでした'); return; }
+    Promise.all(regs.map(r => {
+      addLog(`SW アンインストール: ${r.scope}`);
+      return r.unregister();
+    })).then(() => {
+      addLog('Service Worker を全てアンインストールしました');
+      addLog('キャッシュ削除中...');
+      return caches.keys();
+    }).then(keys => {
+      return Promise.all(keys.map(k => {
+        addLog(`キャッシュ削除: ${k}`);
+        return caches.delete(k);
+      }));
+    }).then(() => {
+      addLog('完了 — ページを再読み込みするとキャッシュが再構築されます');
+    });
+  });
+}
+window.unregisterSW = unregisterSW;
+
+// Init
+renderKeys();
+
+// Show SW status
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    if (regs.length > 0) {
+      addLog(`Service Worker 登録済み: ${regs.length}件 (${regs[0].scope})`);
+    } else {
+      addLog('Service Worker 未登録');
+    }
+  });
+}
+</script>
+</body>
+</html>

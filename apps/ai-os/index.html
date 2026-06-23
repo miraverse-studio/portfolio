@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AI制作管理OS v0.1</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#07070f; --surface:#0f0f1a; --s2:#141424; --s3:#1a1a30;
+  --border:rgba(255,255,255,0.07); --b-accent:rgba(124,58,237,0.22);
+  --text:#e2e8f0; --muted:#64748b; --dim:#374151;
+  --accent:#7c3aed; --a-light:#a78bfa;
+  --green:#10b981; --g-light:#34d399; --g-bg:rgba(16,185,129,0.09);
+  --amber:#f59e0b; --am-light:#fbbf24; --am-bg:rgba(245,158,11,0.09);
+  --red:#ef4444; --r-light:#f87171; --r-bg:rgba(239,68,68,0.08);
+  --r:12px; --r-sm:8px; --r-xs:5px;
+  --mono:'JetBrains Mono',monospace;
+}
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; font-size:14px; }
+input, textarea, select, button { font-family:inherit; font-size:inherit; }
+button { cursor:pointer; border:none; background:none; }
+a { color:inherit; text-decoration:none; }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(124,58,237,0.28); border-radius:3px; }
+
+/* ── Top Nav ── */
+.nav {
+  position:sticky; top:0; z-index:100;
+  background:rgba(7,7,15,0.96); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:stretch; padding:0 12px; gap:0;
+}
+.nav-brand {
+  display:flex; align-items:center; gap:8px; padding-right:14px;
+  border-right:1px solid var(--border); margin-right:6px; flex-shrink:0;
+}
+.nav-brand-name { font-size:13px; font-weight:900; color:var(--a-light); letter-spacing:.04em; }
+.nav-brand-ver {
+  font-family:var(--mono); font-size:9px; color:var(--muted);
+  background:var(--s2); padding:1px 6px; border-radius:10px; border:1px solid var(--border);
+}
+.nav-tabs { display:flex; overflow-x:auto; flex:1; }
+.nav-tabs::-webkit-scrollbar { display:none; }
+.tab-btn {
+  padding:13px 15px; font-size:12px; font-weight:700; white-space:nowrap;
+  color:var(--muted); border-bottom:2px solid transparent;
+  transition:color .15s, border-color .15s;
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--a-light); border-bottom-color:var(--accent); }
+
+/* ── Main ── */
+main { max-width:960px; margin:0 auto; padding:24px 14px 80px; }
+.tab-pane { display:none; animation:fadeIn .18s ease; }
+.tab-pane.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+/* ── Section header ── */
+.sec-hd {
+  font-family:var(--mono); font-size:10px; color:var(--muted);
+  letter-spacing:.18em; margin-bottom:12px; margin-top:28px;
+}
+.sec-hd:first-child { margin-top:0; }
+
+/* ── Stat cards ── */
+.stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+@media(min-width:560px) { .stats-grid { grid-template-columns:repeat(4,1fr); } }
+.stat-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); padding:15px 16px;
+}
+.stat-card.hi { border-color:var(--b-accent); }
+.stat-lbl { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:.14em; margin-bottom:7px; }
+.stat-val { font-size:30px; font-weight:900; line-height:1; }
+.stat-val sup { font-size:14px; vertical-align:top; margin-top:5px; display:inline-block; }
+.stat-sub { font-size:11px; color:var(--muted); margin-top:5px; }
+
+/* ── Mini bar chart ── */
+.mini-chart { margin-bottom:4px; }
+.chart-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.chart-lbl { font-size:11px; color:var(--muted); width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+.chart-track { flex:1; height:5px; background:var(--s2); border-radius:3px; overflow:hidden; }
+.chart-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .45s cubic-bezier(.4,0,.2,1); }
+.chart-num { font-family:var(--mono); font-size:10px; color:var(--muted); width:28px; text-align:right; flex-shrink:0; }
+
+/* ── Item cards ── */
+.items-grid { display:grid; gap:9px; }
+@media(min-width:560px) { .items-grid { grid-template-columns:repeat(2,1fr); } }
+.item-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); padding:13px 15px; transition:border-color .15s;
+}
+.item-card:hover { border-color:var(--b-accent); }
+.ic-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:7px; }
+.ic-name { font-size:14px; font-weight:700; line-height:1.35; flex:1; word-break:break-word; }
+.ic-type {
+  font-family:var(--mono); font-size:9px; padding:2px 8px; border-radius:20px;
+  background:rgba(124,58,237,0.1); color:var(--a-light); white-space:nowrap; flex-shrink:0;
+}
+.ic-meta { font-size:11px; color:var(--muted); margin-bottom:7px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+.ic-ai-wrap { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:7px; }
+.ai-tag {
+  font-family:var(--mono); font-size:9px; padding:1px 6px; border-radius:10px;
+  background:var(--g-bg); color:var(--g-light); border:1px solid rgba(16,185,129,0.18);
+}
+.comp-bar { height:4px; background:var(--s2); border-radius:2px; margin-bottom:7px; overflow:hidden; }
+.comp-fill { height:100%; border-radius:2px; transition:width .35s; }
+.comp-red { background:var(--red); }
+.comp-amber { background:var(--amber); }
+.comp-green { background:var(--green); }
+.ic-flags { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:9px; }
+.flag { font-size:10px; padding:1px 7px; border-radius:10px; }
+.flag-on { background:var(--g-bg); color:var(--g-light); }
+.flag-off { color:var(--dim); text-decoration:line-through; }
+.ic-purpose { font-size:11px; color:var(--muted); line-height:1.55; margin-bottom:7px; }
+.ic-next { font-size:11px; color:var(--am-light); margin-bottom:9px; }
+.ic-actions { display:flex; gap:6px; align-items:center; }
+.review-badge { font-family:var(--mono); font-size:10px; color:var(--dim); margin-left:auto; }
+
+/* ── Small buttons ── */
+.btn-s {
+  font-size:11px; padding:5px 11px; border-radius:var(--r-sm);
+  border:1px solid var(--border); color:var(--muted); transition:all .13s;
+  white-space:nowrap;
+}
+.btn-s:hover { color:var(--text); border-color:rgba(255,255,255,0.18); }
+.btn-s-edit { border-color:var(--b-accent); color:var(--a-light); }
+.btn-s-edit:hover { background:rgba(124,58,237,0.1); }
+.btn-s-danger { border-color:rgba(239,68,68,0.18); color:var(--r-light); }
+.btn-s-danger:hover { background:var(--r-bg); }
+.btn-s-confirm { background:var(--r-bg); border-color:var(--red); color:var(--r-light); }
+.btn-s-cancel { color:var(--dim); }
+
+/* ── Filter bar ── */
+.filter-bar { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; align-items:center; }
+.search-box {
+  flex:1; min-width:150px; padding:8px 12px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--text); outline:none; font-size:13px;
+  transition:border-color .15s;
+}
+.search-box:focus { border-color:var(--b-accent); }
+.flt-sel {
+  padding:8px 9px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--muted); outline:none; font-size:12px;
+  cursor:pointer; transition:border-color .15s;
+}
+.flt-sel:focus { border-color:var(--b-accent); color:var(--text); }
+.flt-chk { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); cursor:pointer; }
+.flt-chk input { accent-color:var(--accent); }
+.sort-sel {
+  padding:7px 9px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--muted); outline:none;
+  font-family:var(--mono); font-size:10px;
+}
+.result-cnt { font-family:var(--mono); font-size:10px; color:var(--dim); margin-left:auto; white-space:nowrap; }
+
+/* ── Form ── */
+.form-title { font-size:17px; font-weight:900; margin-bottom:4px; }
+.form-subtitle { font-size:11px; color:var(--muted); font-family:var(--mono); margin-bottom:22px; }
+.form-errors {
+  background:var(--r-bg); border:1px solid rgba(239,68,68,0.25);
+  border-radius:var(--r-sm); padding:10px 13px; margin-bottom:16px; display:none;
+}
+.form-errors.show { display:block; }
+.form-errors p { font-size:12px; color:var(--r-light); margin:2px 0; }
+.form-sec { margin-bottom:22px; }
+.form-sec-hd {
+  font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:.18em;
+  padding-bottom:6px; border-bottom:1px solid var(--border); margin-bottom:13px;
+}
+.form-grid { display:grid; gap:13px; }
+@media(min-width:560px) { .form-grid.g2 { grid-template-columns:1fr 1fr; } }
+.form-field label { display:block; font-size:11px; color:var(--muted); margin-bottom:5px; }
+.form-field label .req { color:var(--red); margin-left:2px; }
+.form-input, .form-sel, .form-ta {
+  width:100%; padding:9px 12px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--text); outline:none;
+  font-size:13px; transition:border-color .15s;
+}
+.form-input:focus, .form-sel:focus, .form-ta:focus { border-color:var(--b-accent); }
+.form-ta { min-height:80px; resize:vertical; line-height:1.6; }
+.form-ta.short { min-height:60px; }
+.form-sel { appearance:none; cursor:pointer; }
+.span2 { grid-column:1/-1; }
+
+/* Range slider */
+.range-wrap { display:flex; align-items:center; gap:10px; }
+.form-range { flex:1; accent-color:var(--accent); cursor:pointer; }
+.range-disp { font-family:var(--mono); font-size:17px; font-weight:700; min-width:52px; text-align:right; }
+
+/* AI chips */
+.chips-wrap { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  padding:5px 13px; border-radius:20px; font-size:11px;
+  border:1px solid var(--border); color:var(--muted); transition:all .13s; cursor:pointer;
+}
+.chip.on { border-color:rgba(16,185,129,0.42); color:var(--g-light); background:var(--g-bg); }
+
+/* Checkboxes */
+.checks-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.chk-item { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; user-select:none; }
+.chk-item input { accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+
+/* Review history */
+.review-list { display:flex; flex-direction:column; gap:7px; max-height:220px; overflow-y:auto; margin-bottom:11px; }
+.review-entry { background:var(--s2); border:1px solid var(--border); border-radius:var(--r-sm); padding:9px 12px; }
+.review-dt { font-family:var(--mono); font-size:9px; color:var(--muted); margin-bottom:4px; }
+.review-note { font-size:12px; line-height:1.6; white-space:pre-wrap; }
+
+/* Form actions */
+.form-actions { display:flex; gap:8px; margin-top:24px; align-items:center; }
+.btn-save {
+  padding:10px 24px; border-radius:var(--r-sm); font-size:13px; font-weight:700;
+  background:rgba(124,58,237,0.13); border:1px solid rgba(124,58,237,0.38); color:var(--a-light);
+  transition:all .15s;
+}
+.btn-save:hover { background:rgba(124,58,237,0.24); }
+.btn-cancel {
+  padding:10px 18px; border-radius:var(--r-sm); font-size:13px;
+  border:1px solid var(--border); color:var(--muted); transition:all .15s;
+}
+.btn-cancel:hover { color:var(--text); }
+.form-meta { font-size:11px; color:var(--dim); font-family:var(--mono); margin-left:auto; }
+
+/* ── Report ── */
+.report-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); padding:18px 20px; margin-bottom:14px;
+}
+.report-card-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.report-card-desc { font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.6; }
+.btn-a {
+  padding:9px 18px; border-radius:var(--r-sm); font-size:12px; font-weight:700;
+  font-family:var(--mono); letter-spacing:.04em; transition:all .15s;
+}
+.btn-export { background:var(--g-bg); border:1px solid rgba(16,185,129,0.28); color:var(--g-light); }
+.btn-export:hover { background:rgba(16,185,129,0.16); }
+.btn-import { background:var(--am-bg); border:1px solid rgba(245,158,11,0.28); color:var(--am-light); }
+.btn-import:hover { background:rgba(245,158,11,0.16); }
+.btn-md { background:rgba(124,58,237,0.09); border:1px solid rgba(124,58,237,0.28); color:var(--a-light); }
+.btn-md:hover { background:rgba(124,58,237,0.18); }
+.import-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.import-file { font-size:12px; color:var(--muted); flex:1; min-width:0; }
+.import-msg { font-size:12px; margin-top:9px; }
+.md-preview {
+  width:100%; min-height:220px; margin-top:13px;
+  background:var(--s2); border:1px solid var(--border); border-radius:var(--r-sm);
+  padding:12px; font-family:var(--mono); font-size:11px;
+  color:var(--text); resize:vertical; outline:none; line-height:1.75;
+}
+.dl-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ── Empty state ── */
+.empty {
+  text-align:center; padding:56px 20px; border:1px dashed var(--border);
+  border-radius:var(--r); color:var(--muted);
+}
+.empty-icon { font-size:38px; margin-bottom:11px; }
+.empty-title { font-size:14px; margin-bottom:5px; }
+.empty-sub { font-size:12px; }
+
+/* ── FAB ── */
+.fab {
+  position:fixed; bottom:22px; right:18px;
+  width:50px; height:50px; border-radius:50%;
+  background:var(--accent); color:#fff; font-size:22px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 18px rgba(124,58,237,.45); transition:transform .15s; z-index:80;
+}
+.fab:hover { transform:scale(1.09); }
+
+/* ── Toast ── */
+.toast {
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+  background:rgba(16,185,129,.9); backdrop-filter:blur(8px);
+  color:#fff; font-size:12px; font-family:var(--mono);
+  padding:8px 22px; border-radius:20px; z-index:999;
+  pointer-events:none; opacity:0; transition:opacity .2s; white-space:nowrap;
+}
+.toast.show { opacity:1; }
+.toast.err { background:rgba(239,68,68,.9); }
+
+/* ── Util ── */
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-brand-name">AI-OS</span>
+    <span class="nav-brand-ver">v0.1</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="dashboard" onclick="gotoTab('dashboard',this)">ダッシュボード</button>
+    <button class="tab-btn" data-tab="items" onclick="gotoTab('items',this)">一覧</button>
+    <button class="tab-btn" data-tab="form" onclick="gotoTab('form',this)">登録/編集</button>
+    <button class="tab-btn" data-tab="report" onclick="gotoTab('report',this)">レポート</button>
+  </div>
+</nav>
+
+<main>
+  <div id="tab-dashboard" class="tab-pane active"></div>
+  <div id="tab-items"     class="tab-pane"></div>
+  <div id="tab-form"      class="tab-pane"></div>
+  <div id="tab-report"    class="tab-pane"></div>
+</main>
+
+<button class="fab" onclick="startNew()" title="新規登録">＋</button>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'ai-os-v1';
+const TYPES = ['Webアプリ','Chrome拡張','Pythonスクリプト','Blenderスクリプト','APIサーバー','デスクトップアプリ','ドキュメント','その他'];
+const AI_TOOLS = ['Claude','ChatGPT','Gemini','Grok','ローカルLLM','手動'];
+const SORTS = [
+  {v:'updatedAt_desc',l:'更新日 (新→旧)'},
+  {v:'updatedAt_asc', l:'更新日 (旧→新)'},
+  {v:'createdAt_desc',l:'作成日 (新→旧)'},
+  {v:'name_asc',      l:'名前 A→Z'},
+  {v:'completion_desc',l:'完成度 (高→低)'},
+  {v:'completion_asc', l:'完成度 (低→高)'},
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let items = [];
+let editingId   = null;
+let pendingDel  = null;
+let selAI       = [];
+let search      = '';
+let sort        = 'updatedAt_desc';
+let filters     = { type:'', ai:'', completion:0, shareable:false, portfolio:false };
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function genId() {
+  return (typeof crypto!=='undefined'&&crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function fmtDate(d) {
+  if (!d) return '';
+  try { return new Date(d+'T00:00:00').toLocaleDateString('ja-JP'); } catch(e){ return d; }
+}
+
+function fmtDt(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleString('ja-JP',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e){ return d; }
+}
+
+function compColor(v) { return v>=70?'comp-green':v>=30?'comp-amber':'comp-red'; }
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show'+(isErr?' err':'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.className='toast'; }, 2600);
+}
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    items = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(items)) items = [];
+    items.forEach(it => {
+      if (!it.reviewHistory) it.reviewHistory = [];
+      if (!Array.isArray(it.ai)) it.ai = [];
+      if (it.completion==null) it.completion = 0;
+    });
+  } catch(e) { items = []; }
+}
+
+// ─── CRUD ────────────────────────────────────────────────────────────────────
+const FORM_FIELD_IDS = [
+  'f-name','f-type','f-location','f-date','f-purpose',
+  'f-completion','f-sec','f-priv','f-share','f-portfolio','f-next'
+];
+
+// 純粋関数: elemMap[id] が null のフィールドがあれば Error を投げる
+function checkNullFields(elemMap) {
+  const missing = FORM_FIELD_IDS.filter(id => elemMap[id] == null);
+  if (missing.length > 0) {
+    throw new Error(
+      'フォームが正しく表示されていません。登録/編集タブから操作してください。'
+    );
+  }
+  return true;
+}
+
+function validateForm() {
+  const errs = [];
+  const nm = document.getElementById('f-name');
+  const tp = document.getElementById('f-type');
+  if (!nm||!nm.value.trim()) errs.push('成果物名は必須です');
+  if (!tp||!tp.value) errs.push('種類を選択してください');
+  return errs;
+}
+
+function readForm() {
+  const el = {};
+  FORM_FIELD_IDS.forEach(id => { el[id] = document.getElementById(id); });
+  checkNullFields(el); // null フィールドがあれば Error を投げる
+  return {
+    name:               el['f-name'].value.trim(),
+    type:               el['f-type'].value,
+    location:           el['f-location'].value.trim(),
+    createdAt:          el['f-date'].value || today(),
+    purpose:            el['f-purpose'].value.trim(),
+    completion:         parseInt(el['f-completion'].value)||0,
+    securityChecked:    el['f-sec'].checked,
+    privacyChecked:     el['f-priv'].checked,
+    shareable:          el['f-share'].checked,
+    portfolioCandidate: el['f-portfolio'].checked,
+    nextAction:         el['f-next'].value.trim(),
+    ai:                 [...selAI],
+  };
+}
+
+function saveForm() {
+  const errs = validateForm();
+  const errBox = document.getElementById('form-errors');
+  if (errs.length) {
+    if (errBox) {
+      errBox.innerHTML = errs.map(e=>`<p>• ${escHtml(e)}</p>`).join('');
+      errBox.className = 'form-errors show';
+    }
+    return;
+  }
+  if (errBox) errBox.className = 'form-errors';
+
+  let data;
+  try {
+    data = readForm();
+  } catch(e) {
+    if (errBox) {
+      errBox.innerHTML = `<p>• ${escHtml(e.message)}</p>`;
+      errBox.className = 'form-errors show';
+    } else {
+      toast(e.message, true);
+    }
+    return;
+  }
+
+  const now = new Date().toISOString();
+  if (editingId) {
+    const idx = items.findIndex(it=>it.id===editingId);
+    if (idx>=0) Object.assign(items[idx], data, {updatedAt:now});
+    toast('更新しました ✓');
+  } else {
+    items.unshift({ id:genId(), ...data, reviewHistory:[], createdAtTs:Date.now(), updatedAt:now });
+    toast('登録しました ✓');
+  }
+  save();
+  editingId = null; selAI = [];
+  gotoTab('items');
+}
+
+function cancelForm() { editingId=null; selAI=[]; gotoTab('items'); }
+
+function deleteItem(id) {
+  items = items.filter(it=>it.id!==id);
+  save(); pendingDel=null;
+  toast('削除しました');
+  renderItems();
+}
+
+function addReview(id) {
+  const ta = document.getElementById('review-input');
+  if (!ta) return;
+  const note = ta.value.trim();
+  if (!note) { toast('レビュー内容を入力してください',true); return; }
+  const item = items.find(it=>it.id===id);
+  if (!item) return;
+  item.reviewHistory.push({ id:genId(), date:new Date().toISOString(), note });
+  item.updatedAt = new Date().toISOString();
+  save(); ta.value='';
+  toast('レビューを追加しました ✓');
+  const rList = document.getElementById('review-list');
+  if (rList) rList.innerHTML = renderReviewList(item);
+}
+
+// ─── Filter / Sort ────────────────────────────────────────────────────────────
+function filtered() {
+  let res = [...items];
+  const q = search.toLowerCase().trim();
+  if (q) res = res.filter(it =>
+    it.name.toLowerCase().includes(q)||
+    (it.purpose||'').toLowerCase().includes(q)||
+    (it.nextAction||'').toLowerCase().includes(q)||
+    it.type.toLowerCase().includes(q)||
+    (it.ai||[]).some(a=>a.toLowerCase().includes(q))
+  );
+  if (filters.type) res = res.filter(it=>it.type===filters.type);
+  if (filters.ai)   res = res.filter(it=>(it.ai||[]).includes(filters.ai));
+  if (filters.completion>0) res = res.filter(it=>it.completion>=filters.completion);
+  if (filters.shareable) res = res.filter(it=>it.shareable);
+  if (filters.portfolio) res = res.filter(it=>it.portfolioCandidate);
+
+  const [key,dir] = sort.split('_');
+  res.sort((a,b)=>{
+    let av,bv;
+    if (key==='name')       { av=a.name;          bv=b.name; }
+    else if (key==='completion') { av=a.completion; bv=b.completion; }
+    else if (key==='createdAt')  { av=a.createdAtTs||0; bv=b.createdAtTs||0; }
+    else                    { av=a.updatedAt||''; bv=b.updatedAt||''; }
+    if (av<bv) return dir==='asc'?-1:1;
+    if (av>bv) return dir==='asc'?1:-1;
+    return 0;
+  });
+  return res;
+}
+
+// ─── Tab navigation ──────────────────────────────────────────────────────────
+function gotoTab(name, btnEl) {
+  document.querySelectorAll('.tab-pane').forEach(el=>el.className='tab-pane');
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).className='tab-pane active';
+  const b = btnEl || document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (b) b.classList.add('active');
+  if (name==='dashboard') renderDash();
+  if (name==='items')     renderItems();
+  if (name==='form')      renderForm();
+  if (name==='report')    renderReport();
+}
+
+function startNew() {
+  editingId=null; selAI=[];
+  gotoTab('form');
+}
+
+function startEdit(id) {
+  const item = items.find(it=>it.id===id);
+  if (!item) return;
+  editingId=id; selAI=[...(item.ai||[])];
+  gotoTab('form');
+}
+
+function reqDel(id) { pendingDel=id; renderItems(); }
+function cancelDel()  { pendingDel=null; renderItems(); }
+
+function setSearch(v)             { search=v; renderItems(); }
+function setFilterType(v)         { filters.type=v; renderItems(); }
+function setFilterAI(v)           { filters.ai=v; renderItems(); }
+function setFilterCompletion(v)   { filters.completion=parseInt(v)||0; renderItems(); }
+function setFilterShareable(v)    { filters.shareable=v; renderItems(); }
+function setFilterPortfolio(v)    { filters.portfolio=v; renderItems(); }
+function setSort(v)               { sort=v; renderItems(); }
+
+function toggleAI(name, btnEl) {
+  if (selAI.includes(name)) selAI=selAI.filter(a=>a!==name);
+  else selAI.push(name);
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.className='chip'+(selAI.includes(c.dataset.ai)?' on':'');
+  });
+}
+
+function updateRangeVal(v) {
+  const el = document.getElementById('range-disp');
+  if (el) el.textContent=v+'%';
+}
+
+// ─── Render Dashboard ─────────────────────────────────────────────────────────
+function renderDash() {
+  const el = document.getElementById('tab-dashboard');
+  const tot = items.length;
+  const avg = tot ? Math.round(items.reduce((s,it)=>s+it.completion,0)/tot) : 0;
+  const shr = items.filter(it=>it.shareable).length;
+  const por = items.filter(it=>it.portfolioCandidate).length;
+  const avgColor = avg>=70?'color:var(--g-light)':avg>=30?'color:var(--am-light)':'color:var(--r-light)';
+
+  const byType = {};
+  items.forEach(it=>{ byType[it.type]=(byType[it.type]||0)+1; });
+  const typeRows = Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+
+  const recent = [...items].sort((a,b)=>(b.updatedAt||'')>(a.updatedAt||'')?1:-1).slice(0,5);
+
+  el.innerHTML = `
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-lbl">TOTAL</div>
+    <div class="stat-val">${tot}</div>
+    <div class="stat-sub">登録成果物</div>
+  </div>
+  <div class="stat-card hi">
+    <div class="stat-lbl">AVG COMPLETION</div>
+    <div class="stat-val" style="${avgColor}">${avg}<sup>%</sup></div>
+    <div class="stat-sub">平均完成度</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-lbl">SHAREABLE</div>
+    <div class="stat-val" style="color:var(--g-light)">${shr}</div>
+    <div class="stat-sub">共有可能数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-lbl">PORTFOLIO</div>
+    <div class="stat-val" style="color:var(--a-light)">${por}</div>
+    <div class="stat-sub">候補数</div>
+  </div>
+</div>
+
+${typeRows.length?`
+<div class="sec-hd">■ BREAKDOWN BY TYPE</div>
+<div class="mini-chart">
+  ${typeRows.map(([t,n])=>`
+    <div class="chart-row">
+      <div class="chart-lbl">${escHtml(t)}</div>
+      <div class="chart-track"><div class="chart-fill" style="width:${Math.round(n/tot*100)}%"></div></div>
+      <div class="chart-num">${n}</div>
+    </div>`).join('')}
+</div>`:''}
+
+<div class="sec-hd">■ RECENT ACTIVITY</div>
+${recent.length
+  ? `<div class="items-grid">${recent.map(it=>itemCard(it,true)).join('')}</div>`
+  : emptyState('📭','まだ成果物が登録されていません','右下の ＋ から追加してください')
+}`;
+}
+
+// ─── Render Items list ────────────────────────────────────────────────────────
+function renderItems() {
+  const el = document.getElementById('tab-items');
+  const res = filtered();
+  el.innerHTML = `
+<div class="filter-bar">
+  <input class="search-box" type="search" placeholder="検索 (名前・目的・AI…)"
+    value="${escHtml(search)}" oninput="setSearch(this.value)">
+  <select class="flt-sel" onchange="setFilterType(this.value)">
+    <option value="">種類: すべて</option>
+    ${TYPES.map(t=>`<option value="${escHtml(t)}"${filters.type===t?' selected':''}>${escHtml(t)}</option>`).join('')}
+  </select>
+  <select class="flt-sel" onchange="setFilterAI(this.value)">
+    <option value="">AI: すべて</option>
+    ${AI_TOOLS.map(a=>`<option value="${escHtml(a)}"${filters.ai===a?' selected':''}>${escHtml(a)}</option>`).join('')}
+  </select>
+  <select class="flt-sel" onchange="setFilterCompletion(this.value)">
+    <option value="0">完成度: すべて</option>
+    <option value="30"${filters.completion===30?' selected':''}>30%以上</option>
+    <option value="50"${filters.completion===50?' selected':''}>50%以上</option>
+    <option value="70"${filters.completion===70?' selected':''}>70%以上</option>
+    <option value="100"${filters.completion===100?' selected':''}>100%のみ</option>
+  </select>
+  <label class="flt-chk"><input type="checkbox" ${filters.shareable?'checked':''} onchange="setFilterShareable(this.checked)">共有可</label>
+  <label class="flt-chk"><input type="checkbox" ${filters.portfolio?'checked':''} onchange="setFilterPortfolio(this.checked)">候補</label>
+  <select class="sort-sel" onchange="setSort(this.value)">
+    ${SORTS.map(s=>`<option value="${s.v}"${sort===s.v?' selected':''}>${s.l}</option>`).join('')}
+  </select>
+  <span class="result-cnt">${res.length}件</span>
+</div>
+${res.length
+  ? `<div class="items-grid">${res.map(it=>itemCard(it,false)).join('')}</div>`
+  : items.length
+    ? emptyState('🔍','条件に一致する成果物がありません','フィルターを変えてみてください')
+    : emptyState('📭','まだ成果物が登録されていません','右下の ＋ から追加してください')
+}`;
+}
+
+// ─── Item card HTML ───────────────────────────────────────────────────────────
+function itemCard(it, compact) {
+  const pct  = it.completion||0;
+  const cc   = compColor(pct);
+  const isDel = pendingDel===it.id;
+  const aiHtml = (it.ai&&it.ai.length)
+    ? `<div class="ic-ai-wrap">${it.ai.map(a=>`<span class="ai-tag">${escHtml(a)}</span>`).join('')}</div>` : '';
+  const flags = [
+    {l:'セキュリティ',v:it.securityChecked},
+    {l:'個人情報',    v:it.privacyChecked},
+    {l:'共有可',      v:it.shareable},
+    {l:'候補',        v:it.portfolioCandidate},
+  ];
+  const showFlags = compact ? flags.filter(f=>f.v) : flags;
+  const revBadge = (it.reviewHistory&&it.reviewHistory.length)
+    ? `<span class="review-badge">💬${it.reviewHistory.length}</span>` : '';
+  const purposeHtml = (!compact&&it.purpose)
+    ? `<div class="ic-purpose">${escHtml(it.purpose.length>90?it.purpose.slice(0,90)+'…':it.purpose)}</div>` : '';
+  const nextHtml = (!compact&&it.nextAction)
+    ? `<div class="ic-next">▶ ${escHtml(it.nextAction.length>70?it.nextAction.slice(0,70)+'…':it.nextAction)}</div>` : '';
+
+  return `<div class="item-card" id="card-${escHtml(it.id)}">
+  <div class="ic-top">
+    <div class="ic-name">${escHtml(it.name)}</div>
+    <div class="ic-type">${escHtml(it.type)}</div>
+  </div>
+  ${aiHtml}
+  <div class="ic-meta">
+    <span>${fmtDate(it.createdAt)||'—'}</span>
+    ${it.location?`<span>·</span><span>${escHtml(it.location.length>24?it.location.slice(0,24)+'…':it.location)}</span>`:''}
+    <span style="margin-left:auto;font-family:var(--mono)">${pct}%</span>
+  </div>
+  <div class="comp-bar"><div class="comp-fill ${cc}" style="width:${pct}%"></div></div>
+  <div class="ic-flags">
+    ${showFlags.map(f=>`<span class="flag ${f.v?'flag-on':'flag-off'}">${f.v?'✓ ':''}${escHtml(f.l)}</span>`).join('')}
+  </div>
+  ${purposeHtml}${nextHtml}
+  <div class="ic-actions">
+    <button class="btn-s btn-s-edit" onclick="startEdit('${escHtml(it.id)}')">編集</button>
+    ${isDel
+      ? `<button class="btn-s btn-s-confirm" onclick="deleteItem('${escHtml(it.id)}')">本当に削除</button>
+         <button class="btn-s btn-s-cancel" onclick="cancelDel()">キャンセル</button>`
+      : `<button class="btn-s btn-s-danger" onclick="reqDel('${escHtml(it.id)}')">削除</button>`}
+    ${revBadge}
+  </div>
+</div>`;
+}
+
+// ─── Render Form ──────────────────────────────────────────────────────────────
+function renderForm() {
+  const el   = document.getElementById('tab-form');
+  const item = editingId ? items.find(it=>it.id===editingId) : null;
+  const v    = item||{};
+
+  el.innerHTML = `
+<div class="form-title">${item?'編集: '+escHtml(item.name.length>28?item.name.slice(0,28)+'…':item.name):'新規登録'}</div>
+<div class="form-subtitle">${item?'ID: '+escHtml(item.id.slice(0,8))+'…':'成果物を登録してください'}</div>
+
+<div id="form-errors" class="form-errors"></div>
+
+<div class="form-sec">
+  <div class="form-sec-hd">■ 基本情報</div>
+  <div class="form-grid g2">
+    <div class="form-field span2">
+      <label>成果物名 <span class="req">*</span></label>
+      <input id="f-name" class="form-input" type="text" maxlength="100"
+        placeholder="例: PWAランチャー" value="${escHtml(v.name||'')}">
+    </div>
+    <div class="form-field">
+      <label>種類 <span class="req">*</span></label>
+      <select id="f-type" class="form-sel">
+        <option value="">選択してください</option>
+        ${TYPES.map(t=>`<option value="${escHtml(t)}"${v.type===t?' selected':''}>${escHtml(t)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-field">
+      <label>保存場所</label>
+      <input id="f-location" class="form-input" type="text" maxlength="100"
+        placeholder="例: iCloud Drive / GitHub" value="${escHtml(v.location||'')}">
+    </div>
+    <div class="form-field">
+      <label>作成日</label>
+      <input id="f-date" class="form-input" type="date" value="${escHtml(v.createdAt||today())}">
+    </div>
+  </div>
+</div>
+
+<div class="form-sec">
+  <div class="form-sec-hd">■ 詳細</div>
+  <div class="form-field" style="margin-bottom:13px">
+    <label>使用AI（複数選択可）</label>
+    <div class="chips-wrap">
+      ${AI_TOOLS.map(a=>`<button class="chip${selAI.includes(a)?' on':''}" data-ai="${escHtml(a)}"
+        onclick="toggleAI('${escHtml(a)}',this)" type="button">${escHtml(a)}</button>`).join('')}
+    </div>
+  </div>
+  <div class="form-field" style="margin-bottom:13px">
+    <label>目的・概要</label>
+    <textarea id="f-purpose" class="form-ta" maxlength="500"
+      placeholder="何のためのツールか、主な機能など">${escHtml(v.purpose||'')}</textarea>
+  </div>
+  <div class="form-field">
+    <label>完成度（0–100%）</label>
+    <div class="range-wrap">
+      <input id="f-completion" class="form-range" type="range" min="0" max="100" step="5"
+        value="${v.completion||0}" oninput="updateRangeVal(this.value)">
+      <span id="range-disp" class="range-disp">${v.completion||0}%</span>
+    </div>
+  </div>
+</div>
+
+<div class="form-sec">
+  <div class="form-sec-hd">■ 評価・フラグ</div>
+  <div class="checks-grid">
+    <label class="chk-item"><input id="f-sec"       type="checkbox" ${v.securityChecked?'checked':''}> セキュリティ確認済み</label>
+    <label class="chk-item"><input id="f-priv"      type="checkbox" ${v.privacyChecked?'checked':''}> 個人情報確認済み</label>
+    <label class="chk-item"><input id="f-share"     type="checkbox" ${v.shareable?'checked':''}> 友人共有可</label>
+    <label class="chk-item"><input id="f-portfolio" type="checkbox" ${v.portfolioCandidate?'checked':''}> ポートフォリオ候補</label>
+  </div>
+</div>
+
+<div class="form-sec">
+  <div class="form-sec-hd">■ 次の課題</div>
+  <div class="form-field">
+    <label>次に直すこと</label>
+    <textarea id="f-next" class="form-ta short" maxlength="300"
+      placeholder="例: マイクロフォン権限エラー時のハンドリングを追加する">${escHtml(v.nextAction||'')}</textarea>
+  </div>
+</div>
+
+${item?`
+<div class="form-sec">
+  <div class="form-sec-hd">■ レビュー履歴 (${(item.reviewHistory||[]).length}件)</div>
+  <div class="review-list" id="review-list">${renderReviewList(item)}</div>
+  <textarea id="review-input" class="form-ta short"
+    placeholder="レビュー内容を入力してください…" maxlength="500"></textarea>
+  <button class="btn-s btn-s-edit" style="margin-top:7px"
+    onclick="addReview('${escHtml(item.id)}')">レビューを追加</button>
+</div>`:''}
+
+<div class="form-actions">
+  <button class="btn-save" onclick="saveForm()">💾 保存</button>
+  <button class="btn-cancel" onclick="cancelForm()">キャンセル</button>
+  ${item?`<span class="form-meta">更新: ${escHtml(fmtDt(item.updatedAt))}</span>`:''}
+</div>`;
+}
+
+function renderReviewList(item) {
+  if (!item.reviewHistory||!item.reviewHistory.length)
+    return `<div style="font-size:12px;color:var(--muted);font-style:italic;padding:6px 0">まだレビューがありません</div>`;
+  return [...item.reviewHistory].reverse().map(r=>`
+    <div class="review-entry">
+      <div class="review-dt">${escHtml(fmtDt(r.date))}</div>
+      <div class="review-note">${escHtml(r.note)}</div>
+    </div>`).join('');
+}
+
+// ─── Render Report ────────────────────────────────────────────────────────────
+let mdCache = '';
+
+function renderReport() {
+  const el = document.getElementById('tab-report');
+  el.innerHTML = `
+<div class="report-card">
+  <div class="report-card-title">📦 JSON エクスポート</div>
+  <div class="report-card-desc">
+    全データを JSON ファイルとしてダウンロードします。バックアップや他環境への移行に使用してください。
+    重複 ID のインポート時にスキップされるため、ID は変更しないでください。
+  </div>
+  <button class="btn-a btn-export" onclick="doExport()">エクスポート (${items.length}件)</button>
+</div>
+
+<div class="report-card">
+  <div class="report-card-title">📥 JSON インポート</div>
+  <div class="report-card-desc">
+    エクスポートした JSON ファイルを読み込みます。<strong style="color:var(--am-light)">既存データに追加</strong>されます（上書きではありません）。
+    重複 ID の項目はスキップされます。
+  </div>
+  <div class="import-row">
+    <input type="file" id="import-file" class="import-file" accept=".json">
+    <button class="btn-a btn-import" onclick="doImport()">インポート実行</button>
+  </div>
+  <div class="import-msg" id="import-msg"></div>
+</div>
+
+<div class="report-card">
+  <div class="report-card-title">📄 Markdown レポート</div>
+  <div class="report-card-desc">
+    現在の全成果物を Markdown 形式でまとめます。README や進捗報告に使えます。
+  </div>
+  <div class="dl-row">
+    <button class="btn-a btn-md" onclick="genMd()">レポート生成</button>
+    <button class="btn-a btn-md hidden" id="md-dl" onclick="dlMd()">ダウンロード</button>
+  </div>
+  <textarea id="md-preview" class="md-preview" readonly placeholder="「レポート生成」を押してください…"></textarea>
+</div>`;
+}
+
+function doExport() {
+  const data = { version:'1.0', exportedAt:new Date().toISOString(), count:items.length, items };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'),{href:url,download:`ai-os-export-${today()}.json`});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('エクスポートしました ✓');
+}
+
+function doImport() {
+  const file = (document.getElementById('import-file')||{}).files[0];
+  const msg  = document.getElementById('import-msg');
+  if (!file) { if(msg)msg.innerHTML='<span style="color:var(--am-light)">ファイルを選択してください</span>'; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.items||!Array.isArray(data.items)) throw new Error('items 配列が見つかりません');
+      const existIds = new Set(items.map(it=>it.id));
+      let added=0, skipped=0;
+      data.items.forEach(it=>{
+        if (!it.id||!it.name||!it.type) { skipped++; return; }
+        if (existIds.has(it.id)) { skipped++; return; }
+        if (!it.reviewHistory) it.reviewHistory=[];
+        if (!Array.isArray(it.ai)) it.ai=[];
+        if (it.completion==null) it.completion=0;
+        items.unshift(it); existIds.add(it.id); added++;
+      });
+      save();
+      if(msg) msg.innerHTML=`<span style="color:var(--g-light)">✓ ${added}件追加 / ${skipped}件スキップ（重複または必須項目不足）</span>`;
+      toast(`${added}件インポートしました ✓`);
+      const exportBtn = document.querySelector('.btn-export');
+      if (exportBtn) exportBtn.textContent=`エクスポート (${items.length}件)`;
+    } catch(err) {
+      if(msg) msg.innerHTML=`<span style="color:var(--r-light)">エラー: ${escHtml(err.message)}</span>`;
+    }
+  };
+  reader.onerror = ()=>{ if(msg)msg.innerHTML='<span style="color:var(--r-light)">ファイル読み込みエラー</span>'; };
+  reader.readAsText(file,'utf-8');
+}
+
+function genMd() {
+  mdCache = buildMd();
+  const ta  = document.getElementById('md-preview');
+  const btn = document.getElementById('md-dl');
+  if (ta)  ta.value = mdCache;
+  if (btn) btn.classList.remove('hidden');
+  toast('Markdown を生成しました ✓');
+}
+
+function dlMd() {
+  if (!mdCache) return;
+  const blob = new Blob([mdCache],{type:'text/markdown'});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'),{href:url,download:`ai-os-report-${today()}.md`});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('ダウンロードしました ✓');
+}
+
+function buildMd() {
+  const tot = items.length;
+  const avg = tot ? Math.round(items.reduce((s,it)=>s+it.completion,0)/tot) : 0;
+  const shr = items.filter(it=>it.shareable).length;
+  const por = items.filter(it=>it.portfolioCandidate).length;
+  const now = new Date().toLocaleString('ja-JP');
+
+  let md = `# AI制作管理OS — 成果物レポート\n\n`;
+  md += `> 出力日時: ${now}\n\n`;
+  md += `## サマリー\n\n| 項目 | 値 |\n|------|----|\n`;
+  md += `| 総登録数 | ${tot}件 |\n| 平均完成度 | ${avg}% |\n| 共有可能数 | ${shr}件 |\n| ポートフォリオ候補 | ${por}件 |\n\n`;
+
+  if (!tot) { md+='_まだ成果物が登録されていません。_\n'; return md; }
+
+  const byType = {};
+  items.forEach(it=>{ if(!byType[it.type])byType[it.type]=[]; byType[it.type].push(it); });
+  md += `## 種類別一覧\n\n`;
+  Object.entries(byType).sort((a,b)=>b[1].length-a[1].length).forEach(([type,its])=>{
+    md += `### ${type}（${its.length}件）\n\n`;
+    its.forEach(it=>{
+      const flags=[it.shareable&&'共有可',it.portfolioCandidate&&'Portfolio',it.securityChecked&&'SEC✓',it.privacyChecked&&'PRI✓'].filter(Boolean);
+      md += `**${(it.name||'').replace(/[<>`*_[\]]/g,'')}**`;
+      md += ` — ${it.completion}%`;
+      if (flags.length) md += ` [${flags.join(', ')}]`;
+      md += '\n';
+      if (it.purpose) md += `> ${it.purpose.replace(/\n/g,' ')}\n`;
+      if (it.ai&&it.ai.length) md += `- 使用AI: ${it.ai.join(', ')}\n`;
+      if (it.location) md += `- 保存先: ${it.location}\n`;
+      if (it.createdAt) md += `- 作成日: ${fmtDate(it.createdAt)}\n`;
+      if (it.nextAction) md += `- **次の課題**: ${it.nextAction.replace(/\n/g,' ')}\n`;
+      if (it.reviewHistory&&it.reviewHistory.length) md += `- レビュー: ${it.reviewHistory.length}件\n`;
+      md += '\n';
+    });
+  });
+  return md;
+}
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+function emptyState(icon, title, sub) {
+  return `<div class="empty">
+    <div class="empty-icon">${icon}</div>
+    <div class="empty-title">${escHtml(title)}</div>
+    <div class="empty-sub">${escHtml(sub)}</div>
+  </div>`;
+}
+
+// ─── TEST API (for TEST_RUNNER.html) ────────────────────────────────────────
+window._testApi = {
+  escHtml,
+  genId,
+  buildMd,
+  filtered,
+  save,
+  load,
+  getItems: ()=>items,
+  setItems: (arr)=>{ items=arr; },
+  checkNullFields,       // null ガードのロジックをテスト可能にエクスポート
+  FORM_FIELD_IDS,        // フィールドID定数も公開（テスト網羅のため）
+};
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+load();
+renderDash();
+</script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 Blender学習支援OS v0.1</title>
+<!-- 静的HTMLのみ / 外部ライブラリ・外部APIなし / 個人情報なし -->
+<!-- localStorage key: blender-os-v1 -->
+<style>
+  :root{
+    --bg:#15171c; --panel:#1d2027; --panel2:#23272f; --line:#323843;
+    --ink:#e6e8ec; --muted:#9aa3b0; --accent:#e87800; --accent2:#ff9e3d;
+    --danger:#e2495a; --ok:#2faf6a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;
+    font-family:-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 56px}
+  header{padding:22px 0 14px}
+  header h1{font-size:1.4rem;margin:0}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .tab{background:none;border:none;color:var(--muted);font-size:.92rem;font-weight:600;
+    padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+  h2{font-size:1.05rem;margin:0 0 14px;display:flex;align-items:center;justify-content:space-between}
+  .cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:18px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .stat .label{font-size:.78rem;color:var(--muted)}
+  .stat .value{font-size:1.5rem;font-weight:800;color:var(--accent2);margin-top:4px}
+  .recent-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+  .recent-row .date{color:var(--muted);min-width:96px}
+  .recent-row .min{margin-left:auto;color:var(--accent2);font-weight:700}
+  .btn{display:inline-block;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    font-size:.85rem;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;text-decoration:none}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1206}
+  .btn.danger{background:none;border-color:var(--danger);color:var(--danger)}
+  .btn.small{font-size:.78rem;padding:4px 9px}
+  .form{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:4px}
+  .req{color:var(--accent2)}
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;
+    color:var(--ink);font-size:.9rem;padding:8px 10px;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{resize:vertical;min-height:54px}
+  .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+  .filters{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .filters .field{margin:0;min-width:160px}
+  .list-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:.9rem;flex-wrap:wrap}
+  .list-row .main{font-weight:600}
+  .list-row .meta{color:var(--muted);font-size:.82rem}
+  .list-row .acts{margin-left:auto;display:flex;gap:6px}
+  .pill{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+  .empty{color:var(--muted);font-size:.88rem;padding:14px 0}
+  .danger-zone{border:1px solid var(--danger);border-radius:10px;padding:14px;margin-top:16px}
+  .danger-zone .warn{color:var(--danger);font-size:.82rem;margin-top:6px}
+  .hint{color:var(--muted);font-size:.8rem;margin-top:4px}
+  footer{border-top:1px solid var(--line);margin-top:24px;padding-top:14px;font-size:.78rem;color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);
+    border:1px solid var(--accent);color:var(--ink);padding:10px 16px;border-radius:8px;font-size:.85rem;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:380px;width:100%}
+  .modal p{margin:0 0 16px;font-size:.92rem}
+  .modal .form-actions{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header><h1>🎨 Blender学習支援OS <span style="color:var(--accent2)">v0.1</span></h1></header>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="dashboard" onclick="showTab('dashboard')">📊 ダッシュボード</button>
+    <button class="tab" data-tab="sessions" onclick="showTab('sessions')">📝 セッション</button>
+    <button class="tab" data-tab="techniques" onclick="showTab('techniques')">🔧 テクニック</button>
+    <button class="tab" data-tab="settings" onclick="showTab('settings')">⚙ 設定</button>
+  </nav>
+
+  <section id="tab-dashboard"></section>
+  <section id="tab-sessions" style="display:none"></section>
+  <section id="tab-techniques" style="display:none"></section>
+  <section id="tab-settings" style="display:none"></section>
+
+  <footer id="footer"></footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <p id="modalMsg"></p>
+    <div class="form-actions">
+      <button class="btn" onclick="closeConfirm()">いいえ</button>
+      <button class="btn danger" id="modalYes">はい</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 定数 =====
+// localStorage key: blender-os-v1
+const STORAGE_KEY = 'blender-os-v1';
+const CATEGORY_VALUES = ['modeling','rigging','animation','shading','rendering','compositing','scripting','vfx'];
+const CATEGORY_LABELS = {modeling:'モデリング',rigging:'リギング',animation:'アニメーション',shading:'シェーディング',rendering:'レンダリング',compositing:'コンポジット',scripting:'スクリプト',vfx:'VFX'};
+const DIFFICULTY_VALUES = ['beginner','intermediate','advanced'];
+const DIFFICULTY_LABELS = {beginner:'初級',intermediate:'中級',advanced:'上級'};
+
+// ===== ユーティリティ =====
+function escHtml(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&#34;',"'":'&#39;'}[c]));
+}
+function genId(prefix){ return prefix + '-' + Date.now(); }
+function todayStr(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function fmtMin(min){ const h=Math.floor(min/60), m=min%60; return h>0 ? (h+'h '+m+'m') : (m+'m'); }
+function mondayStr(){
+  const d=new Date(); const day=(d.getDay()+6)%7; // 月曜=0
+  d.setDate(d.getDate()-day);
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+
+// ===== 状態 =====
+function defaultState(){ return { sessions:[], techniques:[], meta:{ version:'1' } }; }
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const obj = JSON.parse(raw);
+    if(!obj || typeof obj!=='object') return defaultState();
+    return {
+      sessions: Array.isArray(obj.sessions)? obj.sessions : [],
+      techniques: Array.isArray(obj.techniques)? obj.techniques : [],
+      meta: (obj.meta && typeof obj.meta==='object') ? obj.meta : { version:'1' }
+    };
+  }catch(e){ return defaultState(); }
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let state = loadState();
+let editingSessionId = null;
+let editingTechId = null;
+let filterCategory = 'all';
+let filterDifficulty = 'all';
+
+// ===== トースト / 確認モーダル =====
+function toast(msg){
+  const t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+let confirmCb = null;
+function confirmAction(msg, cb){
+  confirmCb = cb;
+  const m=document.getElementById('modalMsg'), bg=document.getElementById('modalBg');
+  if(m) m.textContent = msg;
+  if(bg) bg.classList.add('show');
+}
+function closeConfirm(){ const bg=document.getElementById('modalBg'); if(bg) bg.classList.remove('show'); confirmCb=null; }
+(function(){ const y=document.getElementById('modalYes'); if(y) y.onclick=function(){ const cb=confirmCb; closeConfirm(); if(cb) cb(); }; })();
+
+// ===== タブ切替 =====
+function showTab(name){
+  ['dashboard','sessions','techniques','settings'].forEach(t=>{
+    const sec=document.getElementById('tab-'+t); if(sec) sec.style.display = (t===name)?'block':'none';
+    const btn=document.querySelector('.tab[data-tab="'+t+'"]'); if(btn) btn.classList.toggle('active', t===name);
+  });
+  renderTab(name);
+}
+function renderTab(name){
+  if(name==='dashboard') renderDashboard();
+  else if(name==='sessions') renderSessions();
+  else if(name==='techniques') renderTechniques();
+  else if(name==='settings') renderSettings();
+}
+
+// ===== ダッシュボード =====
+function renderDashboard(){
+  const sec=document.getElementById('tab-dashboard'); if(!sec) return;
+  const totalMin = state.sessions.reduce((a,s)=> a + (Number(s.duration_min)||0), 0);
+  const mon = mondayStr();
+  const weekMin = state.sessions.reduce((a,s)=> a + ((s.date && s.date>=mon) ? (Number(s.duration_min)||0):0), 0);
+  const recent = state.sessions.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0,3);
+  let recentHtml = recent.length ? recent.map(s=>(
+    '<div class="recent-row"><span class="date">'+escHtml(s.date)+'</span><span>'+escHtml(s.topic)+'</span><span class="min">'+escHtml(fmtMin(Number(s.duration_min)||0))+'</span></div>'
+  )).join('') : '<div class="empty">まだセッションがありません。「セッション」タブから追加できます。</div>';
+  sec.innerHTML =
+    '<div class="panel"><h2>📊 ダッシュボード</h2>'+
+    '<div class="cards">'+
+      '<div class="stat"><div class="label">総学習時間</div><div class="value">'+escHtml(fmtMin(totalMin))+'</div></div>'+
+      '<div class="stat"><div class="label">テクニック数</div><div class="value">'+state.techniques.length+'</div></div>'+
+      '<div class="stat"><div class="label">今週の学習時間</div><div class="value">'+escHtml(fmtMin(weekMin))+'</div></div>'+
+    '</div>'+
+    '<div style="font-weight:700;margin-bottom:6px">📅 直近の学習セッション</div>'+ recentHtml +
+    '</div>';
+}
+
+// ===== セッション =====
+function renderSessions(){
+  const sec=document.getElementById('tab-sessions'); if(!sec) return;
+  const ed = editingSessionId ? state.sessions.find(s=>s.id===editingSessionId) : null;
+  const v = ed || { date: todayStr(), topic:'', duration_min:'', tags:[], notes:'' };
+  const tagsStr = Array.isArray(v.tags) ? v.tags.join(', ') : '';
+  const form =
+    '<div class="form">'+
+      '<div class="field"><label>日付 <span class="req">*</span></label><input type="date" id="s-date" value="'+escHtml(v.date)+'"></div>'+
+      '<div class="field"><label>テーマ <span class="req">*</span></label><input type="text" id="s-topic" maxlength="100" placeholder="例: 基本操作・モデリング入門" value="'+escHtml(v.topic)+'"></div>'+
+      '<div class="field"><label>学習時間（分）<span class="req">*</span></label><input type="number" id="s-min" min="1" max="999" placeholder="60" value="'+escHtml(v.duration_min)+'"></div>'+
+      '<div class="field"><label>タグ（カンマ区切り）</label><input type="text" id="s-tags" maxlength="200" placeholder="modeling, basics" value="'+escHtml(tagsStr)+'"></div>'+
+      '<div class="field"><label>メモ</label><textarea id="s-notes" maxlength="500" placeholder="学んだこと・気づき">'+escHtml(v.notes)+'</textarea></div>'+
+      '<div class="form-actions">'+(ed?'<button class="btn" onclick="cancelSessionForm()">キャンセル</button>':'')+'<button class="btn primary" onclick="saveSession()">'+(ed?'更新':'保存')+'</button></div>'+
+    '</div>';
+  const list = state.sessions.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  let listHtml = list.length ? list.map(s=>(
+    '<div class="list-row"><span class="main">'+escHtml(s.date)+'</span>'+
+    '<span>'+escHtml(String(s.topic||'').slice(0,30))+'</span>'+
+    '<span class="meta">'+escHtml(fmtMin(Number(s.duration_min)||0))+'</span>'+
+    '<span class="acts"><button class="btn small" onclick="editSession(\''+escHtml(s.id)+'\')">編集</button>'+
+    '<button class="btn small danger" onclick="askDeleteSession(\''+escHtml(s.id)+'\')">削除</button></span></div>'
+  )).join('') : '<div class="empty">セッションがありません。</div>';
+  sec.innerHTML =
+    '<div class="panel"><h2>📝 学習セッション '+(ed?'<span class="pill">編集中</span>':'')+'</h2>'+ form +
+    '<div style="font-weight:700;margin:6px 0">一覧 ('+list.length+'件)</div>'+ listHtml +'</div>';
+}
+function saveSession(){
+  const dEl=document.getElementById('s-date'), tEl=document.getElementById('s-topic'),
+        mEl=document.getElementById('s-min'), gEl=document.getElementById('s-tags'), nEl=document.getElementById('s-notes');
+  if(!dEl||!tEl||!mEl||!gEl||!nEl){ toast('フォームの読み込みに失敗しました'); return; }
+  const date=dEl.value.trim(), topic=tEl.value.trim(), min=parseInt(mEl.value,10),
+        tags=gEl.value.split(',').map(s=>s.trim()).filter(Boolean), notes=nEl.value.trim();
+  if(!date){ toast('日付は必須です'); return; }
+  if(!topic){ toast('テーマは必須です'); return; }
+  if(!Number.isInteger(min)||min<1||min>999){ toast('学習時間は1〜999分で入力してください'); return; }
+  const now=new Date().toISOString();
+  if(editingSessionId){
+    const s=state.sessions.find(x=>x.id===editingSessionId);
+    if(s){ s.date=date; s.topic=topic; s.duration_min=min; s.tags=tags; s.notes=notes; s.updatedAt=now; }
+    editingSessionId=null;
+  }else{
+    state.sessions.push({ id:genId('s'), date, topic, duration_min:min, tags, notes, createdAt:now, updatedAt:now });
+  }
+  saveState(); renderSessions(); toast('保存しました');
+}
+function editSession(id){ editingSessionId=id; renderSessions(); }
+function cancelSessionForm(){ editingSessionId=null; renderSessions(); }
+function askDeleteSession(id){
+  const s=state.sessions.find(x=>x.id===id); if(!s) return;
+  confirmAction('「'+(String(s.topic||'').slice(0,30))+'」のセッションを削除しますか？', function(){
+    state.sessions = state.sessions.filter(x=>x.id!==id);
+    if(editingSessionId===id) editingSessionId=null;
+    saveState(); renderSessions(); toast('削除しました');
+  });
+}
+
+// ===== テクニック =====
+function renderTechniques(){
+  const sec=document.getElementById('tab-techniques'); if(!sec) return;
+  const ed = editingTechId ? state.techniques.find(t=>t.id===editingTechId) : null;
+  const v = ed || { name:'', category:'modeling', difficulty:'beginner', shortcut:'', notes:'' };
+  const catOpts = CATEGORY_VALUES.map(c=>'<option value="'+c+'"'+(v.category===c?' selected':'')+'>'+escHtml(CATEGORY_LABELS[c])+'</option>').join('');
+  const difOpts = DIFFICULTY_VALUES.map(d=>'<option value="'+d+'"'+(v.difficulty===d?' selected':'')+'>'+escHtml(DIFFICULTY_LABELS[d])+'</option>').join('');
+  const fCat = '<option value="all"'+(filterCategory==='all'?' selected':'')+'>すべて</option>'+CATEGORY_VALUES.map(c=>'<option value="'+c+'"'+(filterCategory===c?' selected':'')+'>'+escHtml(CATEGORY_LABELS[c])+'</option>').join('');
+  const fDif = '<option value="all"'+(filterDifficulty==='all'?' selected':'')+'>すべて</option>'+DIFFICULTY_VALUES.map(d=>'<option value="'+d+'"'+(filterDifficulty===d?' selected':'')+'>'+escHtml(DIFFICULTY_LABELS[d])+'</option>').join('');
+  const form =
+    '<div class="form">'+
+      '<div class="field"><label>技法名 <span class="req">*</span></label><input type="text" id="t-name" maxlength="100" placeholder="例: Loop Cut" value="'+escHtml(v.name)+'"></div>'+
+      '<div class="field"><label>カテゴリ <span class="req">*</span></label><select id="t-cat">'+catOpts+'</select></div>'+
+      '<div class="field"><label>難易度 <span class="req">*</span></label><select id="t-dif">'+difOpts+'</select></div>'+
+      '<div class="field"><label>ショートカット</label><input type="text" id="t-sc" maxlength="50" placeholder="Ctrl+R" value="'+escHtml(v.shortcut)+'"></div>'+
+      '<div class="field"><label>メモ</label><textarea id="t-notes" maxlength="500" placeholder="使い方・コツ">'+escHtml(v.notes)+'</textarea></div>'+
+      '<div class="form-actions">'+(ed?'<button class="btn" onclick="cancelTechForm()">キャンセル</button>':'')+'<button class="btn primary" onclick="saveTech()">'+(ed?'更新':'保存')+'</button></div>'+
+    '</div>';
+  const filters =
+    '<div class="filters">'+
+      '<div class="field"><label>カテゴリ</label><select onchange="setFilterCategory(this.value)">'+fCat+'</select></div>'+
+      '<div class="field"><label>難易度</label><select onchange="setFilterDifficulty(this.value)">'+fDif+'</select></div>'+
+    '</div>';
+  let list = state.techniques.slice();
+  if(filterCategory!=='all') list = list.filter(t=>t.category===filterCategory);
+  if(filterDifficulty!=='all') list = list.filter(t=>t.difficulty===filterDifficulty);
+  let listHtml = list.length ? list.map(t=>(
+    '<div class="list-row"><span class="main">'+escHtml(t.name)+'</span>'+
+    '<span class="pill">'+escHtml(CATEGORY_LABELS[t.category]||t.category)+'</span>'+
+    '<span class="pill">'+escHtml(DIFFICULTY_LABELS[t.difficulty]||t.difficulty)+'</span>'+
+    (t.shortcut?'<span class="meta">'+escHtml(t.shortcut)+'</span>':'')+
+    '<span class="acts"><button class="btn small" onclick="editTech(\''+escHtml(t.id)+'\')">編集</button>'+
+    '<button class="btn small danger" onclick="askDeleteTech(\''+escHtml(t.id)+'\')">削除</button></span></div>'
+  )).join('') : '<div class="empty">該当するテクニックがありません。</div>';
+  sec.innerHTML =
+    '<div class="panel"><h2>🔧 テクニックライブラリ '+(ed?'<span class="pill">編集中</span>':'')+'</h2>'+ form + filters +
+    '<div style="font-weight:700;margin:6px 0">一覧 ('+list.length+'件)</div>'+ listHtml +'</div>';
+}
+function setFilterCategory(v){ filterCategory=v; renderTechniques(); }
+function setFilterDifficulty(v){ filterDifficulty=v; renderTechniques(); }
+function saveTech(){
+  const nEl=document.getElementById('t-name'), cEl=document.getElementById('t-cat'), dEl=document.getElementById('t-dif'),
+        sEl=document.getElementById('t-sc'), noEl=document.getElementById('t-notes');
+  if(!nEl||!cEl||!dEl||!sEl||!noEl){ toast('フォームの読み込みに失敗しました'); return; }
+  const name=nEl.value.trim(), category=cEl.value, difficulty=dEl.value, shortcut=sEl.value.trim(), notes=noEl.value.trim();
+  if(!name){ toast('技法名は必須です'); return; }
+  if(!CATEGORY_VALUES.includes(category)){ toast('カテゴリが不正です'); return; }
+  if(!DIFFICULTY_VALUES.includes(difficulty)){ toast('難易度が不正です'); return; }
+  const now=new Date().toISOString();
+  if(editingTechId){
+    const t=state.techniques.find(x=>x.id===editingTechId);
+    if(t){ t.name=name; t.category=category; t.difficulty=difficulty; t.shortcut=shortcut; t.notes=notes; t.updatedAt=now; }
+    editingTechId=null;
+  }else{
+    state.techniques.push({ id:genId('t'), name, category, difficulty, shortcut, notes, createdAt:now, updatedAt:now });
+  }
+  saveState(); renderTechniques(); toast('保存しました');
+}
+function editTech(id){ editingTechId=id; renderTechniques(); }
+function cancelTechForm(){ editingTechId=null; renderTechniques(); }
+function askDeleteTech(id){
+  const t=state.techniques.find(x=>x.id===id); if(!t) return;
+  confirmAction('「'+escHtml(t.name)+'」を削除しますか？', function(){
+    state.techniques = state.techniques.filter(x=>x.id!==id);
+    if(editingTechId===id) editingTechId=null;
+    saveState(); renderTechniques(); toast('削除しました');
+  });
+}
+
+// ===== 設定 =====
+function renderSettings(){
+  const sec=document.getElementById('tab-settings'); if(!sec) return;
+  sec.innerHTML =
+    '<div class="panel"><h2>⚙ 設定</h2>'+
+      '<div style="font-weight:700;margin-bottom:8px">データ管理</div>'+
+      '<div class="field"><button class="btn primary" onclick="exportJSON()">📥 JSONエクスポート</button>'+
+        '<div class="hint">ファイル名: blender-os-export.json</div></div>'+
+      '<div class="field"><label>📤 JSONインポート</label><input type="file" id="importFile" accept=".json" onchange="importJSON(this)">'+
+        '<div class="warn hint" style="color:var(--danger)">⚠ 現在のデータはすべて上書きされます</div></div>'+
+      '<div class="danger-zone"><div style="font-weight:700">危険な操作</div>'+
+        '<button class="btn danger" style="margin-top:8px" onclick="askReset()">🗑 全データをリセット</button>'+
+        '<div class="warn">⚠ この操作は取り消せません</div></div>'+
+    '</div>';
+}
+function exportJSON(){
+  const data = { sessions:state.sessions, techniques:state.techniques,
+    meta: Object.assign({}, state.meta, { version:'1', exportedAt:new Date().toISOString() }) };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='blender-os-export.json';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('エクスポートしました');
+}
+function validateImport(data){
+  if(typeof data!=='object'||data===null) return false;
+  if(!Array.isArray(data.sessions)) return false;
+  if(!Array.isArray(data.techniques)) return false;
+  return true;
+}
+function importJSON(input){
+  if(!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e){
+    let data;
+    try{ data = JSON.parse(e.target.result); }
+    catch(err){ toast('無効なファイルです。インポートをキャンセルしました。'); input.value=''; return; }
+    if(!validateImport(data)){ toast('無効なファイルです。インポートをキャンセルしました。'); input.value=''; return; }
+    confirmAction('現在のデータを上書きしてインポートしますか？', function(){
+      state = { sessions:data.sessions, techniques:data.techniques,
+        meta:(data.meta&&typeof data.meta==='object')?data.meta:{version:'1'} };
+      saveState(); showTab('dashboard'); toast('インポートしました');
+    });
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+function askReset(){
+  confirmAction('本当に全データを削除しますか？この操作は取り消せません。', function(){
+    localStorage.removeItem(STORAGE_KEY);
+    state = defaultState(); editingSessionId=null; editingTechId=null;
+    showTab('dashboard'); toast('リセットしました');
+  });
+}
+
+// ===== フッター・初期化 =====
+function renderFooter(){
+  const f=document.getElementById('footer'); if(!f) return;
+  f.textContent = 'Blender学習支援OS v0.1 — 2026-06-23 | localStorage キー: blender-os-v1 | 静的HTML / 外部APIなし';
+}
+renderFooter();
+showTab('dashboard');
+</script>
+</body>
+</html>

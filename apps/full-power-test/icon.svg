@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#07070f"/>
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#g1)" stroke-width="6" opacity="0.4"/>
+  <!-- Inner ring -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#g1)" stroke-width="3" opacity="0.25"/>
+  <!-- A letter -->
+  <text x="256" y="330" text-anchor="middle" font-family="Georgia, serif" font-size="220" font-weight="bold" fill="url(#g2)">A</text>
+  <!-- Crown dots -->
+  <circle cx="256" cy="100" r="12" fill="#f59e0b" opacity="0.8"/>
+  <circle cx="196" cy="118" r="8" fill="#a78bfa" opacity="0.6"/>
+  <circle cx="316" cy="118" r="8" fill="#a78bfa" opacity="0.6"/>
+</svg>

@@ -1,0 +1,36 @@
+{
+  "name": "Mira ダッシュボード",
+  "short_name": "Mira",
+  "description": "Mira 全力能力テスト — iPhoneホーム画面から起動できるPWA",
+  "start_url": "/mira-full-power-test/index.html",
+  "display": "standalone",
+  "background_color": "#07070f",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ダッシュボード",
+      "url": "/mira-full-power-test/dashboard.html",
+      "description": "制作物の一覧"
+    },
+    {
+      "name": "タスクボード",
+      "url": "/mira-full-power-test/kanban.html",
+      "description": "タスク管理"
+    },
+    {
+      "name": "オフィス",
+      "url": "/mira-full-power-test/office_mobile.html",
+      "description": "制作物コレクション"
+    }
+  ]
+}

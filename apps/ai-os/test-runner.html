@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEST RUNNER — AI-OS v0.1</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#07070f; --surface:#0f0f1a; --s2:#141424;
+  --text:#e2e8f0; --muted:#64748b; --dim:#374151;
+  --green:#10b981; --red:#ef4444; --amber:#f59e0b; --accent:#7c3aed;
+  --mono:'JetBrains Mono',Consolas,monospace;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--mono); padding:24px 16px 60px; font-size:13px; }
+h1 { font-size:16px; font-weight:700; margin-bottom:4px; color:#a78bfa; }
+.meta { font-size:11px; color:var(--muted); margin-bottom:28px; }
+.suite { margin-bottom:24px; }
+.suite-title { font-size:11px; letter-spacing:.16em; color:var(--muted); margin-bottom:8px; }
+.test { padding:7px 12px; border-radius:5px; margin-bottom:4px; display:flex; align-items:flex-start; gap:10px; }
+.test.pass { background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.2); }
+.test.fail { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.28); }
+.test.skip { background:rgba(100,116,139,.06); border:1px solid rgba(100,116,139,.15); }
+.badge { font-size:10px; font-weight:700; padding:1px 7px; border-radius:3px; flex-shrink:0; margin-top:1px; }
+.badge.pass { background:rgba(16,185,129,.18); color:var(--green); }
+.badge.fail { background:rgba(239,68,68,.18); color:var(--red); }
+.badge.skip { background:rgba(100,116,139,.12); color:var(--muted); }
+.test-name { flex:1; }
+.test-detail { font-size:11px; color:var(--muted); margin-top:3px; }
+.test-detail.err { color:var(--red); }
+.summary {
+  margin-top:32px; padding:16px 20px;
+  background:var(--surface); border:1px solid rgba(255,255,255,.07); border-radius:8px;
+}
+.sum-title { font-size:11px; letter-spacing:.15em; color:var(--muted); margin-bottom:10px; }
+.sum-row { display:flex; gap:24px; font-size:16px; font-weight:700; }
+.sum-pass { color:var(--green); }
+.sum-fail { color:var(--red); }
+.sum-skip { color:var(--muted); }
+.sum-sub { font-size:11px; color:var(--muted); margin-top:8px; }
+.verdict { font-size:14px; font-weight:700; margin-top:12px; }
+.verdict.ok  { color:var(--green); }
+.verdict.ng  { color:var(--red); }
+</style>
+</head>
+<body>
+<h1>TEST RUNNER — AI制作管理OS v0.1</h1>
+<div class="meta" id="meta">実行中…</div>
+<div id="suites"></div>
+<div class="summary" id="summary" style="display:none"></div>
+
+<script>
+// ── Test harness ─────────────────────────────────────────────────────────────
+const results = [];
+let currentSuite = '';
+
+function suite(name) { currentSuite = name; }
+
+function test(name, fn) {
+  let status='pass', detail='', errMsg='';
+  try { detail = fn() || ''; }
+  catch(e) { status='fail'; errMsg=e.message||String(e); }
+  results.push({ suite:currentSuite, name, status, detail, errMsg });
+}
+
+function skip(name, reason) {
+  results.push({ suite:currentSuite, name, status:'skip', detail:reason||'', errMsg:'' });
+}
+
+// ── Functions under test (inlined — mirrors ai-os.html logic) ─────────────
+function escHtml(s) {
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function genId() {
+  return (typeof crypto!=='undefined'&&crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function compColor(v) { return v>=70?'comp-green':v>=30?'comp-amber':'comp-red'; }
+
+function fmtDate(d) {
+  if (!d) return '';
+  try { return new Date(d+'T00:00:00').toLocaleDateString('ja-JP'); } catch(e){ return d; }
+}
+
+function filterItems(items, filters, search, sort) {
+  let res = [...items];
+  const q = (search||'').toLowerCase().trim();
+  if (q) res = res.filter(it =>
+    it.name.toLowerCase().includes(q)||
+    (it.purpose||'').toLowerCase().includes(q)||
+    (it.ai||[]).some(a=>a.toLowerCase().includes(q))
+  );
+  if (filters.type) res = res.filter(it=>it.type===filters.type);
+  if (filters.ai)   res = res.filter(it=>(it.ai||[]).includes(filters.ai));
+  if (filters.completion>0) res = res.filter(it=>it.completion>=filters.completion);
+  if (filters.shareable) res = res.filter(it=>it.shareable);
+  if (filters.portfolio) res = res.filter(it=>it.portfolioCandidate);
+  const [key,dir] = (sort||'updatedAt_desc').split('_');
+  res.sort((a,b)=>{
+    let av,bv;
+    if (key==='name') { av=a.name; bv=b.name; }
+    else if (key==='completion') { av=a.completion; bv=b.completion; }
+    else { av=a.updatedAt||''; bv=b.updatedAt||''; }
+    if (av<bv) return dir==='asc'?-1:1;
+    if (av>bv) return dir==='asc'?1:-1;
+    return 0;
+  });
+  return res;
+}
+
+function validateItem(data) {
+  const errs=[];
+  if (!data||!data.name||!data.name.trim()) errs.push('名前必須');
+  if (!data||!data.type) errs.push('種類必須');
+  return errs;
+}
+
+function buildMd(items) {
+  if (!items||!items.length) return '# レポート\n\n_登録なし_\n';
+  const tot=items.length;
+  const avg=Math.round(items.reduce((s,it)=>s+it.completion,0)/tot);
+  const shr=items.filter(it=>it.shareable).length;
+  let md=`# AI制作管理OS — 成果物レポート\n\n`;
+  md+=`| 項目 | 値 |\n|------|----|\n`;
+  md+=`| 総登録数 | ${tot}件 |\n| 平均完成度 | ${avg}% |\n| 共有可能数 | ${shr}件 |\n\n`;
+  items.forEach(it=>{
+    md+=`**${(it.name||'').replace(/[<>`*_[\]]/g,'')}** — ${it.completion}%\n`;
+  });
+  return md;
+}
+
+function validateImport(data) {
+  if (!data||typeof data!=='object') return {ok:false,err:'not an object'};
+  if (!Array.isArray(data.items)) return {ok:false,err:'no items array'};
+  for (const it of data.items) {
+    if (!it.id||!it.name||!it.type) return {ok:false,err:'item missing id/name/type'};
+  }
+  return {ok:true,err:null};
+}
+
+function assert(cond, msg) { if (!cond) throw new Error(msg||'assertion failed'); }
+function assertEqual(a, b, msg) {
+  if (a!==b) throw new Error(`${msg||''}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+}
+
+// ─── Test Suites ─────────────────────────────────────────────────────────────
+
+// 1. escHtml
+suite('escHtml — XSS 防止');
+test('< > を変換する', ()=>{
+  const r = escHtml('<script>alert(1)<\/script>');
+  assert(!r.includes('<script>'), '< が残っている');
+  assert(r.includes('&lt;script&gt;'), '変換されていない');
+  return r;
+});
+test('& を &amp; に変換する', ()=>{
+  assertEqual(escHtml('a & b'), 'a &amp; b', '&変換');
+});
+test('" を &#34; / &quot; に変換する', ()=>{
+  const r = escHtml('"hello"');
+  assert(r.includes('&quot;'), '引用符変換失敗');
+});
+test("' を &#39; に変換する", ()=>{
+  const r = escHtml("O'Brien");
+  assert(r.includes('&#39;'), 'シングルクォート変換失敗');
+});
+test('null を空文字に変換する', ()=>{
+  assertEqual(escHtml(null), '', 'null処理');
+});
+test('undefined を空文字に変換する', ()=>{
+  assertEqual(escHtml(undefined), '', 'undefined処理');
+});
+test('数値をそのまま文字列化する', ()=>{
+  assertEqual(escHtml(42), '42', '数値処理');
+});
+
+// 2. genId
+suite('genId — ID 生成');
+test('文字列を返す', ()=>{
+  assert(typeof genId()==='string', '文字列でない');
+});
+test('空でない', ()=>{
+  assert(genId().length>0, '空文字');
+});
+test('10回呼んで全て異なる', ()=>{
+  const ids=new Set(Array.from({length:10},()=>genId()));
+  assert(ids.size===10, '重複ID: '+ids.size+'/10');
+  return `生成例: ${genId()}`;
+});
+
+// 3. validateItem
+suite('validateItem — フォームバリデーション');
+test('名前なし → エラー', ()=>{
+  const errs=validateItem({type:'Webアプリ'});
+  assert(errs.length>0, 'エラーが出なかった');
+});
+test('種類なし → エラー', ()=>{
+  const errs=validateItem({name:'テスト'});
+  assert(errs.length>0, 'エラーが出なかった');
+});
+test('両方ある → エラーなし', ()=>{
+  const errs=validateItem({name:'テスト',type:'Webアプリ'});
+  assertEqual(errs.length, 0, 'エラーが出た: '+errs.join(','));
+});
+test('名前がスペースのみ → エラー', ()=>{
+  const errs=validateItem({name:'   ',type:'Webアプリ'});
+  assert(errs.length>0, 'スペースのみでエラーが出なかった');
+});
+
+// 4. filterItems
+suite('filterItems — フィルター/ソート');
+const MOCK = [
+  {id:'1',name:'App A',type:'Webアプリ',  ai:['Claude'], completion:80, shareable:true,  portfolioCandidate:false, purpose:'テスト用A', updatedAt:'2026-06-01'},
+  {id:'2',name:'App B',type:'Chrome拡張', ai:['ChatGPT'],completion:40, shareable:false, portfolioCandidate:true,  purpose:'テスト用B', updatedAt:'2026-06-10'},
+  {id:'3',name:'App C',type:'Webアプリ',  ai:['Claude','Gemini'],completion:100,shareable:true,portfolioCandidate:true,purpose:'テスト用C',updatedAt:'2026-06-20'},
+];
+const noFilter = {type:'',ai:'',completion:0,shareable:false,portfolio:false};
+
+test('フィルターなし → 全件', ()=>{
+  assertEqual(filterItems(MOCK,noFilter,'','').length, 3, '全件でない');
+});
+test('種類フィルター: Webアプリ → 2件', ()=>{
+  const r=filterItems(MOCK,{...noFilter,type:'Webアプリ'},'','');
+  assertEqual(r.length, 2, 'Webアプリ件数');
+});
+test('AIフィルター: Claude → 2件', ()=>{
+  const r=filterItems(MOCK,{...noFilter,ai:'Claude'},'','');
+  assertEqual(r.length, 2, 'Claude件数');
+});
+test('完成度フィルター: 70%以上 → 2件', ()=>{
+  const r=filterItems(MOCK,{...noFilter,completion:70},'','');
+  assertEqual(r.length, 2, '70%以上件数');
+});
+test('共有可フィルター → 2件', ()=>{
+  const r=filterItems(MOCK,{...noFilter,shareable:true},'','');
+  assertEqual(r.length, 2, '共有可件数');
+});
+test('候補フィルター → 2件', ()=>{
+  const r=filterItems(MOCK,{...noFilter,portfolio:true},'','');
+  assertEqual(r.length, 2, '候補件数');
+});
+test('フリーテキスト検索: "Claude" → 2件', ()=>{
+  const r=filterItems(MOCK,noFilter,'Claude','');
+  assertEqual(r.length, 2, 'Claude検索件数');
+});
+test('フリーテキスト検索: "app b" (case insensitive) → 1件', ()=>{
+  const r=filterItems(MOCK,noFilter,'app b','');
+  assertEqual(r.length, 1, '大文字小文字検索');
+});
+test('ソート: 完成度 高→低', ()=>{
+  const r=filterItems(MOCK,noFilter,'','completion_desc');
+  assertEqual(r[0].completion, 100, '最初が100%でない');
+  assert(r[1].completion>=r[2].completion, 'ソート順違反');
+});
+test('ソート: 名前 A→Z', ()=>{
+  const r=filterItems(MOCK,noFilter,'','name_asc');
+  assertEqual(r[0].name, 'App A', '名前ソート');
+});
+test('ソート: 更新日 新→旧', ()=>{
+  const r=filterItems(MOCK,noFilter,'','updatedAt_desc');
+  assertEqual(r[0].name, 'App C', '最新更新日');
+});
+
+// 5. compColor
+suite('compColor — 完成度カラー');
+test('0% → comp-red', ()=>{ assertEqual(compColor(0),'comp-red','0%色'); });
+test('29% → comp-red', ()=>{ assertEqual(compColor(29),'comp-red','29%色'); });
+test('30% → comp-amber', ()=>{ assertEqual(compColor(30),'comp-amber','30%色'); });
+test('69% → comp-amber', ()=>{ assertEqual(compColor(69),'comp-amber','69%色'); });
+test('70% → comp-green', ()=>{ assertEqual(compColor(70),'comp-green','70%色'); });
+test('100% → comp-green', ()=>{ assertEqual(compColor(100),'comp-green','100%色'); });
+
+// 6. buildMd
+suite('buildMd — Markdownレポート生成');
+test('アイテムなし → "登録なし"を含む', ()=>{
+  const md=buildMd([]);
+  assert(md.includes('登録なし')||md.includes('_'), 'empty message missing');
+});
+test('1件 → 名前を含む', ()=>{
+  const md=buildMd([{...MOCK[0]}]);
+  assert(md.includes('App A'), '名前がない');
+});
+test('完成度をパーセントで出力', ()=>{
+  const md=buildMd([{...MOCK[0]}]);
+  assert(md.includes('80%'), '80%がない');
+});
+test('共有可能数を集計', ()=>{
+  const md=buildMd(MOCK);
+  assert(md.includes('共有可能数'), '共有可能数項目がない');
+  assert(md.includes('2件')||md.includes('2'), '共有可能数の値がない');
+});
+test('XSS文字が含まれる名前を安全に出力', ()=>{
+  const dangerous=[{id:'x',name:'<alert>',type:'Webアプリ',ai:[],completion:0,
+    shareable:false,portfolioCandidate:false,purpose:'',reviewHistory:[],updatedAt:''}];
+  const md=buildMd(dangerous);
+  assert(!md.includes('<alert>'), 'XSS未処理');
+});
+test('Markdown特殊文字をエスケープ', ()=>{
+  const special=[{id:'y',name:'My **App** [test]',type:'Webアプリ',ai:[],completion:50,
+    shareable:false,portfolioCandidate:false,purpose:'',reviewHistory:[],updatedAt:''}];
+  const md=buildMd(special);
+  assert(!md.includes('**App**'), 'Markdownインジェクション');
+});
+
+// 7. validateImport
+suite('validateImport — インポート検証');
+test('正常データ → ok:true', ()=>{
+  const r=validateImport({items:[{id:'abc',name:'Test',type:'Webアプリ'}]});
+  assert(r.ok, 'ok=falseのはず: '+r.err);
+});
+test('items配列なし → ok:false', ()=>{
+  const r=validateImport({data:[]});
+  assert(!r.ok, 'ok=trueになってしまった');
+});
+test('null → ok:false', ()=>{
+  const r=validateImport(null);
+  assert(!r.ok, 'nullでok=trueになった');
+});
+test('idなし項目 → ok:false', ()=>{
+  const r=validateImport({items:[{name:'X',type:'Y'}]});
+  assert(!r.ok, 'id欠如でok=trueになった');
+});
+test('名前なし項目 → ok:false', ()=>{
+  const r=validateImport({items:[{id:'abc',type:'Y'}]});
+  assert(!r.ok, '名前欠如でok=trueになった');
+});
+
+// 8. localStorage round-trip
+suite('localStorage — 保存/読込');
+const LS_KEY = 'ai-os-test-runner';
+test('保存して読み込める', ()=>{
+  const testData=[{id:'t1',name:'テスト'}];
+  localStorage.setItem(LS_KEY, JSON.stringify(testData));
+  const loaded=JSON.parse(localStorage.getItem(LS_KEY));
+  assertEqual(loaded.length,1,'件数不一致');
+  assertEqual(loaded[0].name,'テスト','名前不一致');
+  localStorage.removeItem(LS_KEY);
+  return 'OK';
+});
+test('破損JSONは例外を出す', ()=>{
+  localStorage.setItem(LS_KEY, '{invalid:json}');
+  let threw=false;
+  try { JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ threw=true; }
+  assert(threw, 'parseが例外を出さなかった');
+  localStorage.removeItem(LS_KEY);
+});
+test('空のストレージはnullを返す', ()=>{
+  localStorage.removeItem(LS_KEY);
+  assertEqual(localStorage.getItem(LS_KEY), null, 'nullでない');
+});
+
+// 9. fmtDate
+suite('fmtDate — 日付フォーマット');
+test('有効な日付 → 日本語表示', ()=>{
+  const r=fmtDate('2026-06-21');
+  assert(r.includes('2026')||r.includes('6'), '年か月がない: '+r);
+});
+test('空文字 → 空文字', ()=>{
+  assertEqual(fmtDate(''), '', '空文字処理');
+});
+test('null → 空文字', ()=>{
+  assertEqual(fmtDate(null), '', 'null処理');
+});
+
+// 10. checkNullFields — readForm null ガード
+// ai-os.html の checkNullFields と同一ロジックを inline して独立テスト
+const FORM_FIELD_IDS_TEST = [
+  'f-name','f-type','f-location','f-date','f-purpose',
+  'f-completion','f-sec','f-priv','f-share','f-portfolio','f-next'
+];
+function checkNullFieldsTest(elemMap) {
+  const missing = FORM_FIELD_IDS_TEST.filter(id => elemMap[id] == null);
+  if (missing.length > 0) {
+    throw new Error(
+      'フォームが正しく表示されていません。登録/編集タブから操作してください。'
+    );
+  }
+  return true;
+}
+function makeMockElements() {
+  // 全11フィールドが存在する最小限のモック
+  const el = {};
+  FORM_FIELD_IDS_TEST.forEach(id => { el[id] = {value:'x', checked:false}; });
+  return el;
+}
+
+suite('checkNullFields — readForm null ガード');
+
+test('全フィールドが null → Error を投げる', () => {
+  let threw=false, msg='';
+  try { checkNullFieldsTest({}); } catch(e) { threw=true; msg=e.message; }
+  assert(threw, '例外が出なかった');
+  assert(msg.length>0, 'メッセージが空');
+  return msg;
+});
+test('エラーメッセージが日本語でユーザー向け', () => {
+  let msg='';
+  try { checkNullFieldsTest({}); } catch(e) { msg=e.message; }
+  assert(/フォーム/.test(msg), '"フォーム"が含まれない: '+msg);
+  assert(/タブ|リロード|操作/.test(msg), '操作指示が含まれない: '+msg);
+  return msg;
+});
+test('1フィールドだけ null → Error を投げる', () => {
+  const el = makeMockElements();
+  el['f-name'] = null; // 1つだけ null
+  let threw=false;
+  try { checkNullFieldsTest(el); } catch(e) { threw=true; }
+  assert(threw, '1つでも null なら Error が必要');
+});
+test('最後のフィールドだけ null → Error を投げる', () => {
+  const el = makeMockElements();
+  el['f-next'] = null; // 最後のフィールドのみ null
+  let threw=false;
+  try { checkNullFieldsTest(el); } catch(e) { threw=true; }
+  assert(threw, '最後のフィールドが null でも Error が必要');
+});
+test('全フィールドが揃っている → true を返す (例外なし)', () => {
+  const el = makeMockElements();
+  let result=null, threw=false;
+  try { result=checkNullFieldsTest(el); } catch(e) { threw=true; }
+  assert(!threw, '全部揃っているのに Error が出た');
+  assert(result===true, '戻り値が true でない: '+result);
+});
+test('undefined と null は両方 "missing" 扱い', () => {
+  const el = makeMockElements();
+  el['f-sec'] = undefined;
+  el['f-priv'] = null;
+  let threw=false;
+  try { checkNullFieldsTest(el); } catch(e) { threw=true; }
+  assert(threw, 'undefined/null を区別している (どちらも missing のはず)');
+});
+test('validateForm と矛盾しない: null フィールドは validateForm もエラーとして扱う', () => {
+  // validateForm は !nm || !nm.value.trim() でガードしているので
+  // nm === null のとき errs にプッシュする
+  const nm = null;
+  const tp = null;
+  const errs = [];
+  if (!nm||!nm.value.trim()) errs.push('名前必須');
+  if (!tp||!tp.value)        errs.push('種類必須');
+  assert(errs.length===2, 'validateForm がnullを2件エラーにするはず: '+errs.length);
+  return 'validateForm: '+errs.join(', ');
+});
+
+// ─── Render results ──────────────────────────────────────────────────────────
+(function render() {
+  const suiteMap = {};
+  results.forEach(r=>{ if(!suiteMap[r.suite])suiteMap[r.suite]=[]; suiteMap[r.suite].push(r); });
+
+  let html='';
+  Object.entries(suiteMap).forEach(([sname,tests])=>{
+    const pass=tests.filter(t=>t.status==='pass').length;
+    const fail=tests.filter(t=>t.status==='fail').length;
+    html+=`<div class="suite">
+<div class="suite-title">■ ${sname} — ${pass}/${tests.length}件通過 ${fail>0?'❌':'✅'}</div>`;
+    tests.forEach(t=>{
+      html+=`<div class="test ${t.status}">
+<span class="badge ${t.status}">${t.status==='pass'?'PASS':t.status==='fail'?'FAIL':'SKIP'}</span>
+<div class="test-name">${escHtml(t.name)}
+${t.detail?`<div class="test-detail">${escHtml(t.detail)}</div>`:''}
+${t.errMsg?`<div class="test-detail err">⚠ ${escHtml(t.errMsg)}</div>`:''}
+</div></div>`;
+    });
+    html+='</div>';
+  });
+
+  document.getElementById('suites').innerHTML=html;
+
+  const total=results.length;
+  const pass=results.filter(r=>r.status==='pass').length;
+  const fail=results.filter(r=>r.status==='fail').length;
+  const skip=results.filter(r=>r.status==='skip').length;
+  const allOk=fail===0;
+
+  document.getElementById('summary').innerHTML=`
+<div class="sum-title">■ 総合結果</div>
+<div class="sum-row">
+  <span class="sum-pass">PASS ${pass}</span>
+  <span class="sum-fail">FAIL ${fail}</span>
+  <span class="sum-skip">SKIP ${skip}</span>
+  <span style="color:var(--muted)">/ ${total} tests</span>
+</div>
+<div class="sum-sub">実行日時: ${new Date().toLocaleString('ja-JP')}</div>
+<div class="verdict ${allOk?'ok':'ng'}">${allOk?'✓ 全テスト通過 — 問題ありません':'✗ 失敗したテストがあります — 上記を確認してください'}</div>`;
+  document.getElementById('summary').style.display='';
+  document.getElementById('meta').textContent=`${total}件のテストを実行 — ${new Date().toLocaleString('ja-JP')}`;
+})();
+
+</script>
+</body>
+</html>

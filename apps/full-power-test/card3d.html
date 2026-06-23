@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>3D Business Card | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body {
+  background:#07070f; min-height:100vh; overflow-x:hidden;
+  font-family:'Noto Sans JP',sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+}
+
+.nav { display:flex; width:100%; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.back { color:#64748b; text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid rgba(255,255,255,0.08); border-radius:16px; }
+.nav-title { font-size:14px; font-weight:900; flex:1; color:#e2e8f0; }
+
+.hero { padding:48px 20px 24px; text-align:center; }
+.hero-sub { font-size:11px; color:#64748b; letter-spacing:0.2em; font-family:'JetBrains Mono',monospace; margin-bottom:8px; }
+.hero-h { font-size:22px; font-weight:900; color:#e2e8f0; }
+
+/* ─── 3D SCENE ─────────────────────────────────────────────────────────── */
+.scene {
+  perspective: 1200px;
+  perspective-origin: 50% 40%;
+  width: 380px;
+  height: 240px;
+  margin: 40px auto;
+  cursor: grab;
+}
+.scene:active { cursor: grabbing; }
+
+.card-3d {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  position: relative;
+  transition: transform 0.1s ease;
+  animation: autoFloat 6s ease-in-out infinite;
+}
+.card-3d.user-controlled { animation: none !important; }
+
+@keyframes autoFloat {
+  0%,100% { transform: rotateX(10deg) rotateY(-15deg); }
+  25%      { transform: rotateX(-5deg) rotateY(20deg); }
+  50%      { transform: rotateX(12deg) rotateY(10deg); }
+  75%      { transform: rotateX(-8deg) rotateY(-20deg); }
+}
+
+.card-face {
+  position: absolute; inset: 0;
+  border-radius: 18px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* FRONT */
+.card-front {
+  background: linear-gradient(135deg, #1a0a3e 0%, #0f0f1a 40%, #1a0a2e 100%);
+  border: 1px solid rgba(124,58,237,0.3);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(124,58,237,0.1) inset,
+    0 30px 60px rgba(0,0,0,0.5),
+    0 0 80px rgba(124,58,237,0.1);
+}
+
+/* Holographic overlay */
+.card-front::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: conic-gradient(
+    from 0deg at 30% 50%,
+    rgba(124,58,237,0.08) 0deg,
+    rgba(245,158,11,0.06) 60deg,
+    rgba(16,185,129,0.06) 120deg,
+    rgba(59,130,246,0.06) 180deg,
+    rgba(124,58,237,0.08) 240deg,
+    rgba(245,158,11,0.04) 300deg,
+    rgba(124,58,237,0.08) 360deg
+  );
+  pointer-events: none;
+  border-radius: 18px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card-front:hover::before { opacity: 1; }
+
+/* Circuit line decoration */
+.card-front::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 180px; height: 180px;
+  background:
+    radial-gradient(circle at 100% 100%, rgba(124,58,237,0.12) 0%, transparent 60%),
+    repeating-linear-gradient(90deg, rgba(124,58,237,0.05) 0px, rgba(124,58,237,0.05) 1px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(0deg,  rgba(124,58,237,0.05) 0px, rgba(124,58,237,0.05) 1px, transparent 1px, transparent 20px);
+  border-radius: 0 0 18px 0;
+  pointer-events: none;
+}
+
+.front-top { display: flex; align-items: flex-start; justify-content: space-between; position:relative;z-index:1; }
+.company-mark {
+  display: flex; align-items: center; gap: 8px;
+}
+.mark-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #f59e0b);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900;
+  color: #fff; font-family: 'JetBrains Mono', monospace;
+}
+.company-name-block { }
+.company-name { font-size: 13px; font-weight: 900; color: #e2e8f0; letter-spacing: 0.05em; }
+.company-tag { font-size: 9px; color: #64748b; letter-spacing: 0.15em; }
+
+.nfc-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1.5px solid rgba(124,58,237,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: rgba(124,58,237,0.6);
+}
+
+.front-mid { position:relative;z-index:1; }
+.person-name { font-size: 22px; font-weight: 900; color: #e2e8f0; margin-bottom: 3px; }
+.person-role {
+  font-size: 11px; color: #a78bfa; letter-spacing: 0.1em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.front-bottom { display:flex; justify-content:space-between; align-items:flex-end; position:relative;z-index:1; }
+.contact-list { display: flex; flex-direction: column; gap: 3px; }
+.contact-item {
+  font-size: 10px; color: #64748b; font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; gap: 6px;
+}
+.contact-item .icon { font-size: 10px; }
+
+/* Chip */
+.chip {
+  width: 32px; height: 24px; border-radius: 5px;
+  background: linear-gradient(135deg, #c8a96e, #f5d08a);
+  position: relative; overflow: hidden;
+}
+.chip::before {
+  content: '';
+  position: absolute; inset: 3px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 3px;
+  background: linear-gradient(135deg, #d4a85c, #ffe0a0);
+}
+
+/* BACK */
+.card-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #0f0f1a, #1a1a2e);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+}
+.back-stripe {
+  height: 48px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(124,58,237,0.8) 0px, rgba(124,58,237,0.8) 8px,
+    rgba(100,40,200,0.6) 8px, rgba(100,40,200,0.6) 16px
+  );
+}
+.back-signature-area {
+  margin: 14px 20px;
+  height: 36px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 4px;
+  display: flex; align-items: center; padding: 0 10px;
+}
+.signature { font-family: 'Dancing Script', cursive; font-size: 18px; color: #333; font-style: italic; }
+.back-content { padding: 10px 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.back-info { font-size: 9px; color: #64748b; font-family: 'JetBrains Mono', monospace; line-height: 1.9; }
+.qr-placeholder {
+  width: 60px; height: 60px; border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: rgba(124,58,237,0.5); text-align: center;
+  background: rgba(124,58,237,0.05); float: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+.back-bottom { display: flex; align-items: flex-end; justify-content: space-between; }
+.back-url { font-size: 9px; color: rgba(124,58,237,0.6); font-family: 'JetBrains Mono', monospace; }
+
+/* ─── CONTROLS ─────────────────────────────────────────────────────────── */
+.controls { display: flex; gap: 8px; margin: 0 auto 32px; flex-wrap: wrap; justify-content: center; }
+.ctrl-btn {
+  font-size: 11px; padding: 8px 18px; border-radius: 16px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+  color: #94a3b8; font-family: inherit; transition: all 0.2s;
+}
+.ctrl-btn:hover { color: #e2e8f0; border-color: rgba(124,58,237,0.4); }
+.ctrl-btn.active { background: rgba(124,58,237,0.1); border-color: rgba(124,58,237,0.4); color: #a78bfa; }
+
+/* TECH NOTE */
+.tech-note { text-align:center; font-size:10px; color:rgba(148,163,184,0.3); padding:20px; font-family:'JetBrains Mono',monospace; line-height:1.8; }
+
+/* SHADOW UNDER CARD */
+.card-shadow {
+  width: 300px; height: 30px; margin: -20px auto 0;
+  background: radial-gradient(ellipse, rgba(124,58,237,0.25) 0%, transparent 70%);
+  filter: blur(10px);
+}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-title">💳 3D ビジネスカード</div>
+</div>
+
+<div class="hero">
+  <div class="hero-sub">CSS TRANSFORM 3D · BACKFACE VISIBILITY</div>
+  <div class="hero-h">ドラッグして回転 · クリックで裏面へ</div>
+</div>
+
+<div class="scene" id="scene">
+  <div class="card-3d" id="card">
+    <!-- FRONT -->
+    <div class="card-face card-front">
+      <div class="front-top">
+        <div class="company-mark">
+          <div class="mark-icon">A</div>
+          <div class="company-name-block">
+            <div class="company-name">Mira</div>
+            <div class="company-tag">AI × CREATIVE</div>
+          </div>
+        </div>
+        <div class="nfc-dot">◉</div>
+      </div>
+      <div class="front-mid">
+        <div class="person-name">Mira</div>
+        <div class="person-role">CEO · AI Director · Game Producer</div>
+      </div>
+      <div class="front-bottom">
+        <div class="contact-list">
+          <div class="contact-item"><span class="icon">@</span>mira@example.com</div>
+          <div class="contact-item"><span class="icon">🌐</span>mira.example.com</div>
+          <div class="contact-item"><span class="icon">📍</span>Remote · Japan</div>
+        </div>
+        <div class="chip"></div>
+      </div>
+    </div>
+
+    <!-- BACK -->
+    <div class="card-face card-back">
+      <div class="back-stripe"></div>
+      <div class="back-signature-area">
+        <div class="signature" style="font-family:cursive;font-size:20px;color:#333;font-style:italic;">Mira</div>
+      </div>
+      <div class="back-content">
+        <div style="display:flex;gap:12px;">
+          <div class="back-info">
+            Mira<br>
+            AI × Game × Creative<br>
+            ──────────<br>
+            Meshy · Blender · Claude<br>
+            Godot · Unreal Engine<br>
+            ──────────<br>
+            Est. 2026 · Fully Remote
+          </div>
+          <div class="qr-placeholder">QR<br>CODE<br>HERE</div>
+        </div>
+        <div class="back-bottom">
+          <div class="back-url">mira.example.com</div>
+          <div style="font-size:9px;color:rgba(148,163,184,0.3);font-family:'JetBrains Mono',monospace;">v1.0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-shadow"></div>
+
+<div class="controls">
+  <button class="ctrl-btn active" onclick="setAnim('float', this)">🌊 Auto Float</button>
+  <button class="ctrl-btn" onclick="setAnim('spin', this)">↺ Spin</button>
+  <button class="ctrl-btn" onclick="flipCard()">🔄 裏返す</button>
+  <button class="ctrl-btn" onclick="setTheme('dark', this)">🌑 Dark</button>
+  <button class="ctrl-btn" onclick="setTheme('gold', this)">✨ Gold</button>
+</div>
+
+<div class="tech-note">
+  Pure CSS 3D · transform-style: preserve-3d · backface-visibility: hidden<br>
+  Mouse/touch ドラッグでリアルタイム回転 · perspective: 1200px
+</div>
+
+<script>
+const card = document.getElementById('card');
+const scene = document.getElementById('scene');
+
+let flipped = false;
+let rotX = 10, rotY = -15;
+let isDragging = false, startX = 0, startY = 0;
+let userControlled = false;
+let currentAnim = 'float';
+
+// ─── Drag to rotate ───────────────────────────────────────────────────────────
+scene.addEventListener('mousedown', e => {
+  isDragging = true; startX = e.clientX; startY = e.clientY;
+  scene.style.cursor = 'grabbing';
+  card.classList.add('user-controlled');
+  userControlled = true;
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - startX, dy = e.clientY - startY;
+  rotY = flipped ? 180 + dx * 0.3 : dx * 0.3;
+  rotX = -dy * 0.3;
+  card.style.transform = getTransform();
+  startX = e.clientX; startY = e.clientY;
+});
+
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+  scene.style.cursor = 'grab';
+});
+
+// Touch
+scene.addEventListener('touchstart', e => {
+  isDragging = true;
+  startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  card.classList.add('user-controlled');
+  userControlled = true;
+}, {passive:true});
+
+scene.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - startX;
+  const dy = e.touches[0].clientY - startY;
+  rotY += dx * 0.4; rotX -= dy * 0.4;
+  card.style.transform = getTransform();
+  startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+}, {passive:true});
+
+scene.addEventListener('touchend', () => { isDragging = false; });
+
+function getTransform() {
+  return `rotateX(${Math.max(-40,Math.min(40,rotX))}deg) rotateY(${rotY}deg)`;
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+function flipCard() {
+  flipped = !flipped;
+  card.classList.add('user-controlled');
+  card.style.transition = 'transform 0.7s cubic-bezier(0.25,0.46,0.45,0.94)';
+  rotY = flipped ? 180 : 0;
+  rotX = 5;
+  card.style.transform = getTransform();
+  setTimeout(() => { card.style.transition = 'transform 0.1s ease'; }, 700);
+}
+window.flipCard = flipCard;
+
+// Click to flip
+scene.addEventListener('click', e => {
+  if (Math.abs(e.clientX - startX) < 5 && !isDragging) flipCard();
+});
+
+function setAnim(anim, btn) {
+  currentAnim = anim;
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  card.classList.remove('user-controlled');
+  userControlled = false;
+  card.style.transform = '';
+
+  if (anim === 'spin') {
+    card.style.animation = 'spin3d 4s linear infinite';
+  } else {
+    card.style.animation = 'autoFloat 6s ease-in-out infinite';
+  }
+}
+window.setAnim = setAnim;
+
+// Add spin3d keyframe dynamically
+const style = document.createElement('style');
+style.textContent = `
+@keyframes spin3d { 0%{transform:rotateX(10deg) rotateY(0deg)} 100%{transform:rotateX(10deg) rotateY(360deg)} }
+`;
+document.head.appendChild(style);
+
+function setTheme(theme, btn) {
+  const front = document.querySelector('.card-front');
+  if (theme === 'gold') {
+    front.style.background = 'linear-gradient(135deg, #2a1800 0%, #1a0f00 40%, #2a1500 100%)';
+    front.style.border = '1px solid rgba(245,158,11,0.4)';
+    document.querySelector('.mark-icon').style.background = 'linear-gradient(135deg, #f59e0b, #fbbf24)';
+    document.querySelector('.mark-icon').style.color = '#1a0f00';
+    document.querySelector('.person-role').style.color = '#f59e0b';
+  } else {
+    front.style.background = 'linear-gradient(135deg, #1a0a3e 0%, #0f0f1a 40%, #1a0a2e 100%)';
+    front.style.border = '1px solid rgba(124,58,237,0.3)';
+    document.querySelector('.mark-icon').style.background = 'linear-gradient(135deg, #7c3aed, #f59e0b)';
+    document.querySelector('.mark-icon').style.color = '#fff';
+    document.querySelector('.person-role').style.color = '#a78bfa';
+  }
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector('.ctrl-btn').classList.add('active');
+}
+window.setTheme = setTheme;
+</script>
+</body>
+</html>

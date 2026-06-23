@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Music Visualizer | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'JetBrains Mono',monospace; }
+canvas { display:block; position:fixed; inset:0; }
+#c-bg { z-index:1; }
+#c-viz { z-index:2; }
+
+.hud {
+  position:fixed; z-index:10; top:0; left:0; right:0;
+  padding:14px 20px; display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,transparent 100%);
+}
+.hud-title { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.2em; }
+.hud-info { font-size:10px; color:rgba(255,255,255,0.25); text-align:right; line-height:1.8; }
+
+.bottom {
+  position:fixed; z-index:10; bottom:0; left:0; right:0;
+  padding:16px 20px; display:flex; flex-direction:column; gap:12px; align-items:center;
+  background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,transparent 100%);
+}
+.controls { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.btn {
+  font-size:10px; padding:6px 16px; border-radius:16px; cursor:pointer;
+  font-family:'JetBrains Mono',monospace; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.5); transition:all 0.2s;
+}
+.btn:hover { color:#fff; border-color:rgba(255,255,255,0.4); }
+.btn.active { border-color:rgba(124,58,237,0.6); color:#a78bfa; background:rgba(124,58,237,0.12); }
+.btn.start { border-color:rgba(16,185,129,0.5); color:#34d399; background:rgba(16,185,129,0.08); font-weight:700; }
+
+.status { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; }
+.status.active { color:#34d399; }
+.status.error { color:#f87171; }
+
+.tech-note {
+  position:fixed; z-index:10; bottom:80px; right:16px;
+  font-size:9px; color:rgba(255,255,255,0.18); line-height:1.8; text-align:right;
+}
+.back {
+  position:fixed; z-index:10; top:14px; left:20px;
+  color:rgba(255,255,255,0.3); text-decoration:none; font-size:11px;
+  padding:5px 12px; border:1px solid rgba(255,255,255,0.1); border-radius:16px;
+}
+
+.freq-labels {
+  position:fixed; z-index:10; left:0; right:0; text-align:center;
+  font-size:9px; color:rgba(255,255,255,0.2); letter-spacing:0.15em;
+}
+</style>
+</head>
+<body>
+<canvas id="c-bg"></canvas>
+<canvas id="c-viz"></canvas>
+
+<div class="hud">
+  <a href="index.html" class="back">← HOME</a>
+  <div class="hud-title">AUDIO FREQUENCY ANALYZER · Web Audio API</div>
+  <div class="hud-info" id="hud-info">BPM: --<br>PEAK: --</div>
+</div>
+
+<div class="bottom">
+  <div class="controls">
+    <button class="btn start" id="startBtn" onclick="startMic()">🎤 マイク起動</button>
+    <button class="btn active" onclick="setViz('bars',this)">BARS</button>
+    <button class="btn" onclick="setViz('waveform',this)">WAVEFORM</button>
+    <button class="btn" onclick="setViz('radial',this)">RADIAL</button>
+    <button class="btn" onclick="setViz('waterfall',this)">WATERFALL</button>
+  </div>
+  <div class="status" id="status">マイクボタンを押して音声の可視化を開始</div>
+</div>
+
+<div class="tech-note">
+  Web Audio API · AnalyserNode · FFT 2048<br>
+  Canvas 2D · requestAnimationFrame · Zero libs
+</div>
+
+<script>
+const bgCanvas  = document.getElementById('c-bg');
+const vizCanvas = document.getElementById('c-viz');
+const bgCtx     = bgCanvas.getContext('2d');
+const ctx       = vizCanvas.getContext('2d');
+
+let audioCtx, analyser, source, stream;
+let fftData, waveData;
+const FFT_SIZE = 2048;
+const SMOOTH = 0.82;
+
+let mode = 'bars';
+let running = false;
+let raf;
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+function resize() {
+  bgCanvas.width  = vizCanvas.width  = window.innerWidth;
+  bgCanvas.height = vizCanvas.height = window.innerHeight;
+  drawBackground();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Static starfield background ─────────────────────────────────────────────
+function drawBackground() {
+  const W = bgCanvas.width, H = bgCanvas.height;
+  bgCtx.fillStyle = '#00000f';
+  bgCtx.fillRect(0, 0, W, H);
+  // Grid lines
+  bgCtx.strokeStyle = 'rgba(124,58,237,0.05)';
+  bgCtx.lineWidth = 1;
+  const GRID = 60;
+  for (let x = 0; x < W; x += GRID) { bgCtx.beginPath(); bgCtx.moveTo(x,0); bgCtx.lineTo(x,H); bgCtx.stroke(); }
+  for (let y = 0; y < H; y += GRID) { bgCtx.beginPath(); bgCtx.moveTo(0,y); bgCtx.lineTo(W,y); bgCtx.stroke(); }
+  // Center line
+  bgCtx.strokeStyle = 'rgba(124,58,237,0.15)';
+  bgCtx.lineWidth = 1;
+  bgCtx.beginPath(); bgCtx.moveTo(0,H/2); bgCtx.lineTo(W,H/2); bgCtx.stroke();
+}
+
+// ─── Mic start ────────────────────────────────────────────────────────────────
+async function startMic() {
+  if (running) { stopMic(); return; }
+  const btn = document.getElementById('startBtn');
+  const status = document.getElementById('status');
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = SMOOTH;
+    source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    fftData  = new Uint8Array(analyser.frequencyBinCount);
+    waveData = new Uint8Array(analyser.fftSize);
+
+    running = true;
+    btn.textContent = '⏹ 停止';
+    btn.className = 'btn';
+    status.textContent = '🔴 LIVE — マイクから音声を取得中';
+    status.className = 'status active';
+    loop();
+  } catch(e) {
+    status.textContent = 'マイクへのアクセスが拒否されました: ' + e.message;
+    status.className = 'status error';
+  }
+}
+window.startMic = startMic;
+
+function stopMic() {
+  running = false;
+  cancelAnimationFrame(raf);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  document.getElementById('startBtn').textContent = '🎤 マイク起動';
+  document.getElementById('startBtn').className = 'btn start';
+  document.getElementById('status').textContent = 'マイクボタンを押して音声の可視化を開始';
+  document.getElementById('status').className = 'status';
+  ctx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+  drawDemoMode();
+}
+
+// ─── Demo loop (no mic) ───────────────────────────────────────────────────────
+let demoT = 0;
+function drawDemoMode() {
+  // Draw a placeholder
+  const W = vizCanvas.width, H = vizCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(124,58,237,0.06)';
+  ctx.font = '13px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('Web Audio API · リアルタイム周波数解析', W/2, H/2 - 10);
+  ctx.fillStyle = 'rgba(148,163,184,0.3)';
+  ctx.font = '11px JetBrains Mono';
+  ctx.fillText('AnalyserNode → FFT → Canvas 2D', W/2, H/2 + 14);
+  ctx.textAlign = 'left';
+}
+drawDemoMode();
+
+// ─── Peak / BPM estimation ────────────────────────────────────────────────────
+let peakHistory = [], lastBeat = 0, bpmSamples = [];
+function detectBeat(fft) {
+  const low = fft.slice(0, 10);
+  const energy = low.reduce((s,v)=>s+v,0) / low.length;
+  peakHistory.push(energy);
+  if (peakHistory.length > 40) peakHistory.shift();
+  const avg = peakHistory.reduce((s,v)=>s+v,0) / peakHistory.length;
+  const now = performance.now();
+  if (energy > avg * 1.5 && now - lastBeat > 300) {
+    if (lastBeat > 0) {
+      const interval = now - lastBeat;
+      bpmSamples.push(60000 / interval);
+      if (bpmSamples.length > 8) bpmSamples.shift();
+    }
+    lastBeat = now;
+    return true;
+  }
+  return false;
+}
+
+// ─── Visualization modes ──────────────────────────────────────────────────────
+// WATERFALL: scrolling spectrogram
+let waterfall = null;
+
+function drawBars(fft, W, H) {
+  const BINS = Math.min(fft.length, 256);
+  const BAR_W = W / BINS * 0.9;
+  const GAP   = W / BINS * 0.1;
+  for (let i = 0; i < BINS; i++) {
+    const v = fft[i] / 255;
+    const barH = v * (H * 0.85);
+    const x = i * (BAR_W + GAP);
+    const hue = (i / BINS * 280 + 20) % 360;
+    // Gradient per bar
+    const grad = ctx.createLinearGradient(0, H, 0, H - barH);
+    grad.addColorStop(0, `hsla(${hue},90%,55%,0.9)`);
+    grad.addColorStop(0.6, `hsla(${(hue+40)%360},85%,65%,0.7)`);
+    grad.addColorStop(1, `hsla(${(hue+80)%360},80%,80%,0.4)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, H - barH, BAR_W, barH);
+    // Peak dot
+    ctx.fillStyle = `hsla(${hue},100%,90%,0.8)`;
+    ctx.fillRect(x, H - barH - 2, BAR_W, 2);
+  }
+}
+
+function drawWaveform(wave, W, H) {
+  const sliceW = W / wave.length;
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#7c3aed';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  for (let i = 0; i < wave.length; i++) {
+    const v = wave[i] / 128 - 1;
+    const x = i * sliceW;
+    const y = H / 2 + v * H * 0.45;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  // Mirror
+  ctx.strokeStyle = 'rgba(167,139,250,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < wave.length; i++) {
+    const v = wave[i] / 128 - 1;
+    const x = i * sliceW;
+    const y = H / 2 - v * H * 0.45;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+function drawRadial(fft, W, H) {
+  const cx = W / 2, cy = H / 2;
+  const BINS = Math.min(fft.length, 180);
+  const BASE_R = Math.min(W, H) * 0.18;
+
+  for (let i = 0; i < BINS; i++) {
+    const v = fft[i] / 255;
+    const angle = (i / BINS) * Math.PI * 2 - Math.PI / 2;
+    const len   = v * Math.min(W, H) * 0.3;
+    const hue   = (i / BINS * 360 + 240) % 360;
+    const x1 = cx + Math.cos(angle) * BASE_R;
+    const y1 = cy + Math.sin(angle) * BASE_R;
+    const x2 = cx + Math.cos(angle) * (BASE_R + len);
+    const y2 = cy + Math.sin(angle) * (BASE_R + len);
+    ctx.strokeStyle = `hsla(${hue},90%,65%,${0.4 + v * 0.6})`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = `hsla(${hue},90%,65%,0.5)`;
+    ctx.shadowBlur = v * 12;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  // Center circle
+  const avgV = fft.slice(0,32).reduce((s,v)=>s+v,0)/32/255;
+  ctx.strokeStyle = `rgba(167,139,250,${0.3+avgV*0.7})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, BASE_R, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function initWaterfall(W, H) {
+  waterfall = document.createElement('canvas');
+  waterfall.width = W;
+  waterfall.height = H;
+}
+
+function drawWaterfall(fft, W, H) {
+  if (!waterfall || waterfall.width !== W || waterfall.height !== H) initWaterfall(W, H);
+  const wCtx = waterfall.getContext('2d');
+  // Scroll down 1px
+  const imgData = wCtx.getImageData(0, 0, W, H - 1);
+  wCtx.putImageData(imgData, 0, 1);
+  // Draw new row at top
+  const BINS = Math.min(fft.length, W);
+  for (let i = 0; i < BINS; i++) {
+    const v = fft[i] / 255;
+    const hue = v * 240;
+    const light = 20 + v * 70;
+    wCtx.fillStyle = `hsl(${hue},90%,${light}%)`;
+    wCtx.fillRect(Math.floor(i * W / BINS), 0, Math.ceil(W / BINS), 1);
+  }
+  ctx.drawImage(waterfall, 0, 0);
+}
+
+// ─── Main render loop ─────────────────────────────────────────────────────────
+function loop() {
+  if (!running) return;
+  raf = requestAnimationFrame(loop);
+
+  analyser.getByteFrequencyData(fftData);
+  analyser.getByteTimeDomainData(waveData);
+
+  const W = vizCanvas.width, H = vizCanvas.height;
+  const beat = detectBeat(fftData);
+
+  // Beat flash
+  const flashAlpha = beat ? 0.06 : 0;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (flashAlpha > 0) {
+    ctx.fillStyle = `rgba(124,58,237,${flashAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  if (mode === 'bars')      drawBars(fftData, W, H);
+  if (mode === 'waveform')  drawWaveform(waveData, W, H);
+  if (mode === 'radial')    drawRadial(fftData, W, H);
+  if (mode === 'waterfall') drawWaterfall(fftData, W, H);
+
+  // HUD update
+  const peakBin = fftData.indexOf(Math.max(...fftData));
+  const peakHz  = Math.round(peakBin * (audioCtx.sampleRate / 2) / analyser.frequencyBinCount);
+  const bpm     = bpmSamples.length > 2 ? Math.round(bpmSamples.reduce((s,v)=>s+v)/bpmSamples.length) : '--';
+  document.getElementById('hud-info').innerHTML = `BPM: ${bpm}<br>PEAK: ${peakHz}Hz`;
+}
+
+// ─── Mode switch ──────────────────────────────────────────────────────────────
+function setViz(m, btn) {
+  mode = m;
+  document.querySelectorAll('.btn:not(.start):not(.back)').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (m === 'waterfall') initWaterfall(vizCanvas.width, vizCanvas.height);
+}
+window.setViz = setViz;
+</script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>習慣トラッカー | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
+  --text:#e2e8f0; --muted:#94a3b8; --accent:#7c3aed; --gold:#f59e0b; --green:#10b981;
+}
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; padding-bottom:40px; }
+.nav { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--b1); }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-t { font-size:14px; font-weight:900; flex:1; }
+
+/* TODAY HEADER */
+.today-bar { padding:16px; text-align:center; border-bottom:1px solid var(--b1); }
+.today-date { font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-bottom:4px; }
+.today-completion { font-size:28px; font-weight:900; }
+.today-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+.today-bar-fill { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; margin:12px auto 0; max-width:300px; overflow:hidden; }
+.today-bar-fill-inner { height:100%; border-radius:3px; background:linear-gradient(90deg,#7c3aed,#10b981); transition:width 0.5s ease; }
+
+/* HABITS */
+.habits-section { padding:16px; }
+.sec-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.sec-title { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:0.15em; }
+.add-btn { font-size:11px; padding:5px 12px; border-radius:16px; cursor:pointer; font-family:inherit; background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); color:#a78bfa; }
+
+.habit-card { background:var(--s1); border:1px solid var(--b1); border-radius:14px; padding:14px; margin-bottom:10px; }
+.habit-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.habit-icon { font-size:22px; }
+.habit-name { font-size:14px; font-weight:700; flex:1; }
+.habit-streak { font-size:11px; font-family:'JetBrains Mono',monospace; color:#f59e0b; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); padding:3px 8px; border-radius:8px; }
+.check-btn {
+  width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.2);
+  background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:14px; transition:all 0.2s; flex-shrink:0;
+}
+.check-btn.done { background:#10b981; border-color:#10b981; }
+.check-btn.done::after { content:'✓'; color:#fff; }
+.check-btn:not(.done)::after { content:''; }
+.check-btn:hover:not(.done) { border-color:#7c3aed; }
+
+/* WEEKLY GRID */
+.week-grid { display:flex; gap:4px; }
+.week-day { flex:1; text-align:center; }
+.week-label { font-size:9px; color:var(--muted); margin-bottom:4px; }
+.week-dot { width:24px; height:24px; border-radius:6px; margin:0 auto; background:rgba(255,255,255,0.05); transition:all 0.2s; display:flex; align-items:center; justify-content:center; font-size:10px; }
+.week-dot.done { background:#10b981; }
+.week-dot.today { border:1px solid #7c3aed; }
+
+/* STATS */
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 16px 16px; }
+.stat-card { background:var(--s1); border:1px solid var(--b1); border-radius:12px; padding:12px; text-align:center; }
+.stat-v { font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; }
+.stat-l { font-size:9px; color:var(--muted); margin-top:3px; }
+
+/* ADD MODAL */
+.modal-bg { position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:center;justify-content:center; }
+.modal-bg.show { display:flex; }
+.modal { background:#1a1a2e; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; width:calc(100%-32px); max-width:380px; }
+.modal-title { font-size:14px; font-weight:900; margin-bottom:14px; }
+.m-row { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.m-input { flex:1; padding:9px 12px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+.m-input:focus { border-color:rgba(124,58,237,0.4); }
+.icon-grid { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.icon-opt { font-size:20px; padding:6px; border-radius:8px; cursor:pointer; border:2px solid transparent; background:rgba(255,255,255,0.04); }
+.icon-opt.sel { border-color:#7c3aed; background:rgba(124,58,237,0.15); }
+.m-btns { display:flex; gap:8px; }
+.m-btn { flex:1; padding:10px; border-radius:10px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; border:none; }
+.m-btn.save { background:#7c3aed; color:#fff; }
+.m-btn.cancel { background:rgba(255,255,255,0.06); color:var(--muted); }
+
+/* Delete btn */
+.habit-del { background:none; border:none; color:rgba(239,68,68,0.3); cursor:pointer; font-size:14px; padding:0 4px; }
+.habit-del:hover { color:#f87171; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-t">✅ 習慣トラッカー</div>
+</div>
+
+<div class="today-bar">
+  <div class="today-date" id="todayDate"></div>
+  <div class="today-completion" id="todayCompletion" style="color:#a78bfa;">0 / 0</div>
+  <div class="today-sub">今日の達成状況</div>
+  <div class="today-bar-fill">
+    <div class="today-bar-fill-inner" id="todayFill" style="width:0%;"></div>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-v" id="s-streak" style="color:#f59e0b;">0</div>
+    <div class="stat-l">最長連続日数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-v" id="s-total" style="color:#a78bfa;">0</div>
+    <div class="stat-l">総チェック数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-v" id="s-rate" style="color:#34d399;">0%</div>
+    <div class="stat-l">今週達成率</div>
+  </div>
+</div>
+
+<div class="habits-section">
+  <div class="sec-header">
+    <div class="sec-title">TODAY'S HABITS</div>
+    <button class="add-btn" onclick="openAddModal()">+ 習慣を追加</button>
+  </div>
+  <div id="habitList"></div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-title">新しい習慣</div>
+    <div class="m-row">
+      <input type="text" class="m-input" id="habitName" placeholder="習慣名（例：毎朝コーディング）" maxlength="30">
+    </div>
+    <div class="icon-grid" id="iconGrid"></div>
+    <div class="m-btns">
+      <button class="m-btn cancel" onclick="closeModal()">キャンセル</button>
+      <button class="m-btn save" onclick="saveHabit()">追加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'mira-habits-v1';
+const ICONS = ['💻','📝','🏃','💊','📚','🧘','💪','☕','🎨','🎵','🎮','🌿','💧','🍎','🛌','📱'];
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {
+  habits: [
+    { id:1, name:'Claudeで作業する', icon:'💻', created:'2026-05-01' },
+    { id:2, name:'プロジェクト記録をつける', icon:'📝', created:'2026-05-01' },
+    { id:3, name:'1本コンテンツを作る', icon:'🎨', created:'2026-05-10' },
+    { id:4, name:'収益チェック', icon:'💰', created:'2026-06-01' },
+  ],
+  checks: {},  // { 'YYYY-MM-DD': [habitId, ...] }
+  nextId: 5,
+};
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+const today = new Date().toISOString().slice(0,10);
+
+// ─── Week days ────────────────────────────────────────────────────────────────
+function getWeekDays() {
+  const days = [];
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  return days;
+}
+const WEEK_DAYS = getWeekDays();
+const DAY_LABELS = ['月','火','水','木','金','土','日'];
+
+// ─── Check helpers ────────────────────────────────────────────────────────────
+function isChecked(date, habitId) {
+  return (data.checks[date] || []).includes(habitId);
+}
+function toggleCheck(date, habitId) {
+  if (!data.checks[date]) data.checks[date] = [];
+  const idx = data.checks[date].indexOf(habitId);
+  if (idx >= 0) data.checks[date].splice(idx, 1);
+  else data.checks[date].push(habitId);
+  save();
+}
+
+// ─── Streak calculation ───────────────────────────────────────────────────────
+function calcStreak(habitId) {
+  let streak = 0;
+  const now = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    if (isChecked(key, habitId)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function computeStats() {
+  // Max streak across all habits
+  const maxStreak = data.habits.length > 0
+    ? Math.max(...data.habits.map(h => calcStreak(h.id)), 0) : 0;
+
+  // Total checks
+  const totalChecks = Object.values(data.checks).reduce((s, arr) => s + arr.length, 0);
+
+  // This week rate
+  let weekPossible = WEEK_DAYS.filter(d => d <= today).length * data.habits.length;
+  let weekDone = 0;
+  WEEK_DAYS.filter(d => d <= today).forEach(d => { weekDone += (data.checks[d] || []).length; });
+  const weekRate = weekPossible > 0 ? Math.round(weekDone / weekPossible * 100) : 0;
+
+  document.getElementById('s-streak').textContent = maxStreak;
+  document.getElementById('s-total').textContent = totalChecks;
+  document.getElementById('s-rate').textContent = weekRate + '%';
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  // Today header
+  const dateStr = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  document.getElementById('todayDate').textContent = dateStr;
+  const todayChecked = (data.checks[today] || []).filter(id => data.habits.find(h=>h.id===id)).length;
+  const total = data.habits.length;
+  document.getElementById('todayCompletion').textContent = `${todayChecked} / ${total}`;
+  const pct = total > 0 ? (todayChecked / total * 100).toFixed(0) : 0;
+  document.getElementById('todayFill').style.width = pct + '%';
+
+  // Habits
+  const el = document.getElementById('habitList');
+  if (data.habits.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:rgba(148,163,184,0.3);padding:16px;text-align:center;">習慣を追加してください</div>';
+  } else {
+    el.innerHTML = data.habits.map(h => {
+      const streak = calcStreak(h.id);
+      const checked = isChecked(today, h.id);
+      const weekHtml = WEEK_DAYS.map((d, i) => {
+        const dc = isChecked(d, h.id);
+        const isToday = d === today;
+        return `<div class="week-day">
+          <div class="week-label">${DAY_LABELS[i]}</div>
+          <div class="week-dot${dc?' done':''}${isToday?' today':''}" onclick="toggleDayCheck('${d}',${h.id})">${d > today?'':dc?'✓':''}</div>
+        </div>`;
+      }).join('');
+      return `<div class="habit-card">
+        <div class="habit-top">
+          <div class="habit-icon">${h.icon}</div>
+          <div class="habit-name">${escHtml(h.name)}</div>
+          ${streak > 0 ? `<div class="habit-streak">🔥 ${streak}日</div>` : ''}
+          <button class="check-btn ${checked?'done':''}" onclick="toggleToday(${h.id})"></button>
+          <button class="habit-del" onclick="deleteHabit(${h.id})">✕</button>
+        </div>
+        <div class="week-grid">${weekHtml}</div>
+      </div>`;
+    }).join('');
+  }
+
+  computeStats();
+}
+
+function toggleToday(habitId) { toggleCheck(today, habitId); render(); }
+window.toggleToday = toggleToday;
+function toggleDayCheck(date, habitId) {
+  if (date > today) return;
+  toggleCheck(date, habitId); render();
+}
+window.toggleDayCheck = toggleDayCheck;
+function deleteHabit(id) {
+  if (!confirm('この習慣を削除しますか？')) return;
+  data.habits = data.habits.filter(h => h.id !== id);
+  save(); render();
+}
+window.deleteHabit = deleteHabit;
+
+// ─── Add Modal ────────────────────────────────────────────────────────────────
+let selectedIcon = ICONS[0];
+function openAddModal() {
+  document.getElementById('habitName').value = '';
+  selectedIcon = ICONS[0];
+  document.getElementById('iconGrid').innerHTML = ICONS.map(ic =>
+    `<div class="icon-opt ${ic===selectedIcon?'sel':''}" onclick="selectIcon('${ic}')">${ic}</div>`
+  ).join('');
+  document.getElementById('addModal').classList.add('show');
+  document.getElementById('habitName').focus();
+}
+window.openAddModal = openAddModal;
+function selectIcon(ic) {
+  selectedIcon = ic;
+  document.querySelectorAll('.icon-opt').forEach(el => {
+    el.className = 'icon-opt' + (el.textContent === ic ? ' sel' : '');
+  });
+}
+window.selectIcon = selectIcon;
+function saveHabit() {
+  const name = document.getElementById('habitName').value.trim();
+  if (!name) return;
+  data.habits.push({ id: data.nextId++, name, icon: selectedIcon, created: today });
+  save(); render(); closeModal();
+}
+window.saveHabit = saveHabit;
+function closeModal() { document.getElementById('addModal').classList.remove('show'); }
+window.closeModal = closeModal;
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

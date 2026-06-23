@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>タイピングテスト | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
+  --text:#e2e8f0; --muted:#64748b; --accent:#7c3aed;
+  --correct:#10b981; --error:#ef4444; --cursor:#a78bfa;
+}
+body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; min-height:100vh; display:flex; flex-direction:column; }
+.nav { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--b1); }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-title { font-size:14px; font-weight:700; flex:1; }
+
+.main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px; gap:24px; }
+
+/* MODE SELECTOR */
+.modes { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.mode-btn { font-size:11px; padding:6px 16px; border-radius:16px; cursor:pointer; font-family:'JetBrains Mono',monospace; border:1px solid var(--b1); background:var(--s1); color:var(--muted); transition:all 0.2s; }
+.mode-btn.active { border-color:rgba(124,58,237,0.5); color:#a78bfa; background:rgba(124,58,237,0.1); }
+
+/* STATS BAR */
+.stats-bar { display:flex; gap:20px; align-items:center; font-size:12px; }
+.stat { text-align:center; min-width:60px; }
+.stat-v { font-size:24px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.stat-l { font-size:9px; color:var(--muted); letter-spacing:0.1em; margin-top:2px; }
+.timer-ring { position:relative; }
+.timer-v { font-size:32px; font-weight:900; color:#a78bfa; }
+.timer-l { font-size:9px; color:var(--muted); }
+
+/* TEXT DISPLAY */
+.text-wrap { max-width:700px; width:100%; background:var(--s1); border:1px solid var(--b1); border-radius:16px; padding:24px; position:relative; }
+.text-display {
+  font-family:'JetBrains Mono',monospace; font-size:18px; line-height:2;
+  letter-spacing:0.05em; word-break:break-all; position:relative; user-select:none;
+}
+.char { position:relative; display:inline; }
+.char.correct { color:var(--correct); }
+.char.error   { color:var(--error); background:rgba(239,68,68,0.15); border-radius:2px; }
+.char.pending { color:rgba(255,255,255,0.25); }
+.char.active  { color:var(--cursor); }
+.char.active::after {
+  content:''; position:absolute; left:0; bottom:-2px;
+  width:100%; height:2px; background:var(--cursor);
+  animation:blink 0.8s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+/* HIDDEN INPUT */
+#hiddenInput { position:absolute; opacity:0; width:0; height:0; }
+
+/* RESULT */
+.result-box { display:none; max-width:700px; width:100%; background:var(--s1); border:1px solid var(--b1); border-radius:16px; padding:28px; text-align:center; }
+.result-box.show { display:block; }
+.result-wpm { font-size:56px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#a78bfa; }
+.result-label { font-size:12px; color:var(--muted); margin-top:4px; }
+.result-stats { display:flex; justify-content:center; gap:24px; margin:20px 0; }
+.r-stat { text-align:center; }
+.r-stat-v { font-size:22px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.r-stat-l { font-size:10px; color:var(--muted); }
+.retry-btn { padding:10px 32px; border-radius:12px; cursor:pointer; border:1px solid rgba(124,58,237,0.4); background:rgba(124,58,237,0.1); color:#a78bfa; font-size:13px; font-family:inherit; font-weight:700; margin-top:16px; transition:all 0.2s; }
+.retry-btn:hover { background:rgba(124,58,237,0.2); }
+
+/* PROGRESS BAR */
+.progress { height:3px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden; max-width:700px; width:100%; }
+.progress-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#7c3aed,#f59e0b); transition:width 0.2s; }
+
+/* HISTORY */
+.history { max-width:700px; width:100%; }
+.h-title { font-size:10px; color:var(--muted); letter-spacing:0.15em; margin-bottom:8px; }
+.h-list { display:flex; gap:6px; flex-wrap:wrap; }
+.h-item { font-size:11px; padding:4px 10px; border-radius:8px; background:var(--s1); border:1px solid var(--b1); color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.h-item .h-wpm { color:#a78bfa; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-title">⌨ タイピングスピードテスト</div>
+</div>
+
+<div class="main">
+  <div class="modes" id="modeRow"></div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-v" id="wpmDisp" style="color:#a78bfa;">0</div>
+      <div class="stat-l">WPM</div>
+    </div>
+    <div class="stat">
+      <div class="stat-v" id="accDisp" style="color:#10b981;">100%</div>
+      <div class="stat-l">ACC</div>
+    </div>
+    <div class="stat">
+      <div class="stat-v" id="timerDisp" style="color:#f59e0b;">60</div>
+      <div class="stat-l">SEC</div>
+    </div>
+    <div class="stat">
+      <div class="stat-v" id="errDisp" style="color:#ef4444;">0</div>
+      <div class="stat-l">ERR</div>
+    </div>
+  </div>
+
+  <div class="progress" id="progressWrap">
+    <div class="progress-fill" id="progressFill" style="width:0%;"></div>
+  </div>
+
+  <div class="text-wrap" id="textWrap">
+    <div class="text-display" id="textDisplay"></div>
+    <input type="text" id="hiddenInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+
+  <div class="result-box" id="resultBox">
+    <div class="result-wpm" id="resultWPM">0</div>
+    <div class="result-label">Words Per Minute</div>
+    <div class="result-stats">
+      <div class="r-stat"><div class="r-stat-v" id="rAcc" style="color:#10b981;">—</div><div class="r-stat-l">精度</div></div>
+      <div class="r-stat"><div class="r-stat-v" id="rErr" style="color:#ef4444;">—</div><div class="r-stat-l">ミス数</div></div>
+      <div class="r-stat"><div class="r-stat-v" id="rChars" style="color:#60a5fa;">—</div><div class="r-stat-l">文字数</div></div>
+    </div>
+    <button class="retry-btn" onclick="restart()">↺ もう一度</button>
+  </div>
+
+  <div class="history">
+    <div class="h-title" id="histTitle" style="display:none;">HISTORY</div>
+    <div class="h-list" id="histList"></div>
+  </div>
+</div>
+
+<script>
+// ─── Text samples ─────────────────────────────────────────────────────────────
+const SAMPLES = {
+  code: [
+    `const result = array.filter(x => x > 0).map(x => x * 2).reduce((a, b) => a + b, 0);`,
+    `async function fetchData(url) { const res = await fetch(url); return await res.json(); }`,
+    `class Node { constructor(val) { this.val = val; this.next = null; } }`,
+    `const dp = Array.from({length: n+1}, () => new Array(m+1).fill(0));`,
+    `export const useStore = create((set) => ({ count: 0, inc: () => set(s => ({count: s.count+1})) }));`,
+    `gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);`,
+    `const [state, dispatch] = useReducer(reducer, initialState);`,
+    `Object.entries(obj).filter(([k, v]) => v !== null).forEach(([k, v]) => map.set(k, v));`,
+  ],
+  ja: [
+    `毎朝コーヒーを飲みながらClaudeと作業する。それが最高の生産性を生む。`,
+    `人工知能はツールである。それを使いこなす人間の創造力こそが本質だ。`,
+    `完璧を求めるより、まず動くものを作って改善する。それがアジャイルの精神。`,
+    `コードは書くより読まれる方が多い。未来の自分への手紙を書くつもりで。`,
+    `失敗を恐れるな。それは最も効率的な学習方法だ。`,
+  ],
+  quote: [
+    `The best way to predict the future is to invent it. — Alan Kay`,
+    `Programs must be written for people to read, and only incidentally for machines to execute.`,
+    `Simplicity is prerequisite for reliability. — Edsger Dijkstra`,
+    `Make it work, make it right, make it fast. — Kent Beck`,
+    `Any fool can write code that a computer can understand. Good programmers write code that humans can understand.`,
+    `First, solve the problem. Then, write the code. — John Johnson`,
+  ],
+};
+
+const MODES = [
+  { key:'code', label:'CODE', time:60 },
+  { key:'ja',   label:'日本語', time:60 },
+  { key:'quote',label:'QUOTE', time:60 },
+  { key:'code', label:'CODE 30s', time:30 },
+  { key:'code', label:'CODE 2m', time:120 },
+];
+
+let currentMode  = 0;
+let texts        = [];
+let typedIndex   = 0;    // character index in full text
+let errors       = 0;
+let errorSet     = new Set();
+let startTime    = null;
+let timerInterval = null;
+let timeLimit    = 60;
+let timeLeft     = 60;
+let running      = false;
+let history      = JSON.parse(localStorage.getItem('mira-typing-v1') || '[]');
+
+// ─── Mode buttons ─────────────────────────────────────────────────────────────
+const modeRow = document.getElementById('modeRow');
+MODES.forEach((m, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'mode-btn' + (i===0?' active':'');
+  btn.textContent = m.label;
+  btn.onclick = () => {
+    currentMode = i;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    restart();
+  };
+  modeRow.appendChild(btn);
+});
+
+// ─── Build text ───────────────────────────────────────────────────────────────
+function buildText() {
+  const mode = MODES[currentMode];
+  const pool  = SAMPLES[mode.key];
+  timeLimit   = mode.time;
+  timeLeft    = timeLimit;
+
+  // Repeat/shuffle to fill ~250 chars
+  const shuffled = [...pool].sort(() => Math.random()-0.5);
+  let combined = '';
+  while (combined.length < 250) combined += shuffled[combined.length % shuffled.length].slice(0, 80) + ' ';
+  texts = combined.trim().split('');
+}
+
+// ─── Render text display ──────────────────────────────────────────────────────
+function renderDisplay() {
+  const el = document.getElementById('textDisplay');
+  el.innerHTML = texts.map((ch, i) => {
+    let cls = 'pending';
+    if (i < typedIndex) cls = errorSet.has(i) ? 'error' : 'correct';
+    else if (i === typedIndex) cls = 'active';
+    const disp = ch === ' ' ? '&nbsp;' : ch.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<span class="char ${cls}">${disp}</span>`;
+  }).join('');
+  // Scroll active char into view
+  const activeEl = el.querySelector('.char.active');
+  if (activeEl) {
+    activeEl.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  }
+}
+
+// ─── Input handler ────────────────────────────────────────────────────────────
+const input = document.getElementById('hiddenInput');
+document.getElementById('textWrap').addEventListener('click', () => { input.focus(); });
+
+input.addEventListener('input', e => {
+  const val = e.data;
+
+  if (typedIndex >= texts.length) return;
+
+  if (!running && typedIndex === 0 && val) {
+    startTimer();
+  }
+
+  if (val === null) {
+    // Backspace via compositionend — handled below
+    return;
+  }
+
+  // Process each character
+  const chars = [...(val || '')];
+  chars.forEach(ch => {
+    if (typedIndex >= texts.length) return;
+    if (ch === texts[typedIndex]) {
+      // correct
+    } else {
+      errorSet.add(typedIndex);
+      errors++;
+      updateStats();
+    }
+    typedIndex++;
+  });
+
+  input.value = '';
+  updateStats();
+  renderDisplay();
+  updateProgress();
+
+  if (typedIndex >= texts.length) {
+    finishEarly();
+  }
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Backspace') {
+    if (typedIndex > 0) {
+      typedIndex--;
+      updateStats();
+      renderDisplay();
+    }
+    e.preventDefault();
+  }
+  if (e.key === 'Tab') { e.preventDefault(); restart(); }
+});
+
+// Focus input when clicking anywhere
+document.addEventListener('keydown', e => {
+  if (!['Tab'].includes(e.key) && document.activeElement !== input) {
+    input.focus();
+  }
+});
+
+// ─── Timer ────────────────────────────────────────────────────────────────────
+function startTimer() {
+  running = true;
+  startTime = performance.now();
+  timerInterval = setInterval(() => {
+    timeLeft = Math.max(0, timeLimit - Math.floor((performance.now() - startTime)/1000));
+    document.getElementById('timerDisp').textContent = timeLeft;
+    updateStats();
+    if (timeLeft <= 0) { clearInterval(timerInterval); showResult(); }
+  }, 200);
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function calcWPM() {
+  if (!startTime || !running) return 0;
+  const minutes = (performance.now() - startTime) / 60000;
+  if (minutes < 0.01) return 0;
+  return Math.round((typedIndex / 5) / minutes);
+}
+function calcAcc() {
+  if (typedIndex === 0) return 100;
+  return Math.round((1 - errors / typedIndex) * 100);
+}
+function updateStats() {
+  const wpm = calcWPM();
+  const acc = calcAcc();
+  document.getElementById('wpmDisp').textContent = wpm;
+  document.getElementById('accDisp').textContent = acc + '%';
+  document.getElementById('timerDisp').textContent = timeLeft;
+  document.getElementById('errDisp').textContent = errors;
+}
+function updateProgress() {
+  const pct = typedIndex / texts.length * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// ─── Result ───────────────────────────────────────────────────────────────────
+function showResult() {
+  running = false;
+  clearInterval(timerInterval);
+  const wpm = calcWPM();
+  const acc = calcAcc();
+  document.getElementById('resultWPM').textContent = wpm;
+  document.getElementById('rAcc').textContent = acc + '%';
+  document.getElementById('rErr').textContent = errors;
+  document.getElementById('rChars').textContent = typedIndex;
+  document.getElementById('resultBox').classList.add('show');
+
+  // Save history
+  history.unshift({ wpm, acc, mode: MODES[currentMode].label, date: new Date().toLocaleDateString('ja-JP') });
+  if (history.length > 10) history.pop();
+  localStorage.setItem('mira-typing-v1', JSON.stringify(history));
+  renderHistory();
+}
+function finishEarly() {
+  if (timeLeft > 0) { clearInterval(timerInterval); showResult(); }
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const list = document.getElementById('histList');
+  const title = document.getElementById('histTitle');
+  if (history.length === 0) { title.style.display='none'; return; }
+  title.style.display = 'block';
+  list.innerHTML = history.map(h =>
+    `<div class="h-item"><span class="h-wpm">${h.wpm}</span>wpm · ${h.acc} · ${h.mode}</div>`
+  ).join('');
+}
+renderHistory();
+
+// ─── Restart ─────────────────────────────────────────────────────────────────
+function restart() {
+  clearInterval(timerInterval);
+  typedIndex = 0; errors = 0; errorSet = new Set();
+  startTime = null; running = false;
+  timeLeft = MODES[currentMode].time;
+  document.getElementById('resultBox').classList.remove('show');
+  document.getElementById('progressFill').style.width = '0%';
+  buildText();
+  updateStats();
+  renderDisplay();
+  input.value = '';
+  input.focus();
+}
+window.restart = restart;
+
+restart();
+</script>
+</body>
+</html>

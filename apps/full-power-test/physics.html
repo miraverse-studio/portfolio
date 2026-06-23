@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Physics Engine | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body { background:#07070f; overflow:hidden; font-family:'JetBrains Mono',monospace; }
+canvas { display:block; width:100vw; height:100vh; touch-action:none; cursor:crosshair; }
+.hud {
+  position:fixed; top:0; left:0; right:0; z-index:10; padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,rgba(0,0,0,0.6) 0%,transparent 100%);
+  pointer-events:none;
+}
+.hud-title { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.2em; }
+.hud-stats { font-size:10px; color:rgba(255,255,255,0.3); text-align:right; line-height:1.8; }
+.bottom {
+  position:fixed; bottom:0; left:0; right:0; z-index:10; padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(0deg,rgba(0,0,0,0.6) 0%,transparent 100%);
+}
+.btns { display:flex; gap:6px; }
+.btn {
+  font-size:10px; padding:5px 12px; border-radius:14px; cursor:pointer;
+  font-family:'JetBrains Mono',monospace; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.4); transition:all 0.2s;
+}
+.btn:hover { color:#fff; border-color:rgba(255,255,255,0.4); }
+.btn.active { border-color:rgba(124,58,237,0.5); color:#a78bfa; background:rgba(124,58,237,0.1); }
+.back { color:rgba(255,255,255,0.3); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid rgba(255,255,255,0.1); border-radius:14px; }
+.tech {
+  position:fixed; bottom:44px; right:16px; z-index:10;
+  font-size:9px; color:rgba(255,255,255,0.2); line-height:1.8; text-align:right;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div class="hud-title">MIRA · PHYSICS ENGINE · Canvas 2D</div>
+  <div class="hud-stats" id="stats">Balls: 0<br>FPS: --</div>
+</div>
+<div class="bottom">
+  <a href="index.html" class="back">← HOME</a>
+  <div class="btns">
+    <button class="btn" onclick="addBalls(10)">+10 ボール</button>
+    <button class="btn" onclick="addBalls(50)">+50</button>
+    <button class="btn" onclick="clearBalls()">クリア</button>
+    <button class="btn active" id="gravBtn" onclick="toggleGrav()">重力 ON</button>
+    <button class="btn" onclick="toggleWind()">Wind</button>
+    <button class="btn" onclick="explode()">💥 爆発</button>
+  </div>
+</div>
+<div class="tech">
+  Canvas 2D · Verlet積分 · SAT衝突検出<br>
+  空間分割(グリッド) · O(n²)→O(n) · 0 libs
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H;
+
+// ─── Simulation parameters ────────────────────────────────────────────────────
+const GRAVITY    = 0.3;
+const DAMPING    = 0.97;
+const RESTITUTION = 0.75;
+const FRICTION   = 0.995;
+let gravOn  = true;
+let windOn  = false;
+let windPhase = 0;
+
+// ─── Ball array ───────────────────────────────────────────────────────────────
+let balls = [];
+let nextId = 0;
+
+function makeBall(x, y, r, vx, vy) {
+  const hue = Math.random() * 360;
+  return {
+    id: nextId++, x, y, px: x - (vx||0), py: y - (vy||0),
+    r, mass: r * r * Math.PI,
+    color: `hsl(${hue},80%,60%)`,
+    glow: `hsl(${hue},90%,70%)`,
+    trail: [],
+  };
+}
+
+function addBalls(n) {
+  for (let i = 0; i < n; i++) {
+    const r  = 8 + Math.random() * 18;
+    const x  = r + Math.random() * (W - r*2);
+    const y  = r + Math.random() * (H * 0.5);
+    const vx = (Math.random()-0.5) * 6;
+    const vy = (Math.random()-0.5) * 4;
+    balls.push(makeBall(x, y, r, vx, vy));
+  }
+}
+window.addBalls = addBalls;
+
+function clearBalls() { balls = []; }
+window.clearBalls = clearBalls;
+
+function toggleGrav() {
+  gravOn = !gravOn;
+  const btn = document.getElementById('gravBtn');
+  btn.textContent = gravOn ? '重力 ON' : '重力 OFF';
+  btn.classList.toggle('active', gravOn);
+}
+window.toggleGrav = toggleGrav;
+
+function toggleWind() { windOn = !windOn; }
+window.toggleWind = toggleWind;
+
+function explode() {
+  const cx = W/2, cy = H/2;
+  balls.forEach(b => {
+    const dx = b.x - cx, dy = b.y - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy) + 1;
+    const force = 2000 / (dist + 100);
+    b.px = b.x - dx/dist * force;
+    b.py = b.y - dy/dist * force;
+  });
+}
+window.explode = explode;
+
+// ─── Spatial grid (broad-phase collision) ────────────────────────────────────
+const CELL = 60;
+function gridKey(x, y) { return `${Math.floor(x/CELL)},${Math.floor(y/CELL)}`; }
+
+function buildGrid() {
+  const grid = new Map();
+  balls.forEach(b => {
+    // All cells this ball could be in
+    const x0 = Math.floor((b.x-b.r)/CELL), x1 = Math.floor((b.x+b.r)/CELL);
+    const y0 = Math.floor((b.y-b.r)/CELL), y1 = Math.floor((b.y+b.r)/CELL);
+    for (let cx=x0;cx<=x1;cx++) for (let cy=y0;cy<=y1;cy++) {
+      const k = cx+','+cy;
+      if (!grid.has(k)) grid.set(k, []);
+      grid.get(k).push(b);
+    }
+  });
+  return grid;
+}
+
+// ─── Physics step ─────────────────────────────────────────────────────────────
+function physicsStep() {
+  windPhase += 0.02;
+  const wind = windOn ? Math.sin(windPhase) * 0.4 : 0;
+
+  // Verlet integration
+  balls.forEach(b => {
+    const vx = (b.x - b.px) * FRICTION;
+    const vy = (b.y - b.py) * FRICTION;
+    const ax = wind;
+    const ay = gravOn ? GRAVITY : 0;
+    b.px = b.x; b.py = b.y;
+    b.x += vx + ax;
+    b.y += vy + ay;
+
+    // Trail
+    b.trail.push({x:b.x, y:b.y});
+    if (b.trail.length > 8) b.trail.shift();
+
+    // Wall collisions
+    if (b.x - b.r < 0) { b.x = b.r; b.px = b.x + (b.x - b.px) * RESTITUTION; }
+    if (b.x + b.r > W) { b.x = W - b.r; b.px = b.x + (b.x - b.px) * RESTITUTION; }
+    if (b.y - b.r < 0) { b.y = b.r; b.py = b.y + (b.y - b.py) * RESTITUTION; }
+    if (b.y + b.r > H) {
+      b.y = H - b.r;
+      const vbounce = (b.y - b.py) * RESTITUTION;
+      b.py = b.y + vbounce;
+      // Floor friction
+      b.px = b.x - (b.x - b.px) * 0.90;
+    }
+  });
+
+  // Ball-ball collisions (broad-phase grid)
+  const grid = buildGrid();
+  const checked = new Set();
+
+  grid.forEach(cell => {
+    for (let i = 0; i < cell.length; i++) {
+      for (let j = i+1; j < cell.length; j++) {
+        const a = cell[i], b2 = cell[j];
+        const key = a.id < b2.id ? `${a.id},${b2.id}` : `${b2.id},${a.id}`;
+        if (checked.has(key)) continue;
+        checked.add(key);
+        resolveCollision(a, b2);
+      }
+    }
+  });
+}
+
+function resolveCollision(a, b2) {
+  const dx = b2.x - a.x, dy = b2.y - a.y;
+  const dist2 = dx*dx + dy*dy;
+  const minDist = a.r + b2.r;
+  if (dist2 >= minDist * minDist) return;
+
+  const dist = Math.sqrt(dist2);
+  const nx = dx / dist, ny = dy / dist;
+  const overlap = minDist - dist;
+
+  // Separate
+  const totalMass = a.mass + b2.mass;
+  const aRatio = b2.mass / totalMass, bRatio = a.mass / totalMass;
+  a.x -= nx * overlap * aRatio;
+  a.y -= ny * overlap * aRatio;
+  b2.x += nx * overlap * bRatio;
+  b2.y += ny * overlap * bRatio;
+
+  // Velocity along normal (Verlet: velocity is implicit)
+  const vax = a.x - a.px, vay = a.y - a.py;
+  const vbx = b2.x - b2.px, vby = b2.y - b2.py;
+  const dvn = (vax-vbx)*nx + (vay-vby)*ny;
+  if (dvn > 0) return; // separating
+
+  const impulse = 2 * dvn / totalMass * RESTITUTION;
+  a.px = a.x - (vax - impulse * b2.mass * nx);
+  a.py = a.y - (vay - impulse * b2.mass * ny);
+  b2.px = b2.x - (vbx + impulse * a.mass * nx);
+  b2.py = b2.y - (vby + impulse * a.mass * ny);
+}
+
+// ─── Mouse interaction ────────────────────────────────────────────────────────
+let mouseX = -9999, mouseY = -9999, mouseDown = false;
+
+canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+canvas.addEventListener('mousedown', e => {
+  mouseDown = true;
+  // Spawn ball at mouse
+  const r = 10 + Math.random() * 20;
+  const vx = (Math.random()-0.5) * 4;
+  const vy = -4 - Math.random() * 4;
+  balls.push(makeBall(e.clientX, e.clientY, r, vx, vy));
+});
+canvas.addEventListener('mouseup', () => { mouseDown = false; });
+
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  mouseDown = true; mouseX = t.clientX; mouseY = t.clientY;
+  const r = 12 + Math.random() * 20;
+  balls.push(makeBall(t.clientX, t.clientY, r, (Math.random()-0.5)*4, -5));
+}, {passive:true});
+canvas.addEventListener('touchmove', e => {
+  const t = e.touches[0]; mouseX = t.clientX; mouseY = t.clientY;
+}, {passive:true});
+canvas.addEventListener('touchend', () => { mouseDown = false; }, {passive:true});
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = 'rgba(7,7,15,0.2)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Mouse attractor / repulsor
+  if (mouseX > 0) {
+    const mForce = mouseDown ? -1 : 1;
+    balls.forEach(b => {
+      const dx = mouseX - b.x, dy = mouseY - b.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 120) {
+        const force = (120 - dist) / 120 * 0.8 * mForce;
+        b.x += dx / dist * force;
+        b.y += dy / dist * force;
+      }
+    });
+    // Draw mouse indicator
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 30, 0, Math.PI*2);
+    ctx.strokeStyle = mouseDown ? 'rgba(239,68,68,0.3)' : 'rgba(124,58,237,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  balls.forEach(b => {
+    // Trail
+    if (b.trail.length > 1) {
+      ctx.beginPath();
+      b.trail.forEach((p,i) => {
+        if (i===0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.strokeStyle = b.color.replace('60%)', '60%, 0.3)').replace('hsl(','hsla(');
+      ctx.lineWidth = b.r * 0.4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Glow
+    const grad = ctx.createRadialGradient(b.x-b.r*0.3, b.y-b.r*0.3, 0, b.x, b.y, b.r);
+    grad.addColorStop(0, b.glow);
+    grad.addColorStop(0.6, b.color);
+    grad.addColorStop(1, b.color.replace('60%)', '30%)'));
+
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Specular highlight
+    ctx.beginPath();
+    ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+  });
+}
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Main loop ────────────────────────────────────────────────────────────────
+let t0 = performance.now(), frames = 0, fps = 60, lastFps = 0;
+
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now();
+  frames++;
+  if (now - lastFps >= 1000) { fps = frames; frames = 0; lastFps = now; }
+
+  for (let i = 0; i < 3; i++) physicsStep();  // substeps for stability
+  render();
+
+  document.getElementById('stats').innerHTML = `Balls: ${balls.length}<br>FPS: ${fps}`;
+}
+
+// ─── Start with some balls ────────────────────────────────────────────────────
+addBalls(30);
+loop();
+</script>
+</body>
+</html>

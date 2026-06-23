@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mira Hub</title>
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.08);
+  --text:#e2e8f0; --muted:#64748b; --accent:#7c3aed; --gold:#f59e0b;
+}
+body {
+  background:var(--bg); color:var(--text); width:320px; min-height:400px;
+  font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;
+  font-size:12px;
+}
+.header {
+  background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(245,158,11,0.08));
+  border-bottom:1px solid var(--b1); padding:14px 16px;
+  display:flex; align-items:center; gap:10px;
+}
+.header-logo { font-size:22px; }
+.header-title { font-size:14px; font-weight:900; }
+.header-sub { font-size:10px; color:var(--muted); }
+.header-right { margin-left:auto; text-align:right; }
+.live-dot { display:inline-block;width:6px;height:6px;border-radius:50%;background:#34d399;margin-right:4px;animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+/* Tabs */
+.tabs { display:flex; border-bottom:1px solid var(--b1); }
+.tab { flex:1; padding:9px; text-align:center; cursor:pointer; font-size:10px; color:var(--muted); transition:all 0.2s; border:none; background:none; font-family:inherit; }
+.tab.active { color:#a78bfa; border-bottom:2px solid #7c3aed; }
+
+/* Sections */
+.section { padding:14px 16px; }
+
+/* Pomodoro */
+.pomo-ring { text-align:center; margin-bottom:12px; }
+.pomo-time { font-size:40px; font-weight:900; color:#a78bfa; font-family:'JetBrains Mono',Consolas,monospace; letter-spacing:-0.02em; }
+.pomo-state { font-size:10px; color:var(--muted); margin-top:4px; letter-spacing:0.1em; }
+.pomo-bar-wrap { height:4px; background:rgba(255,255,255,0.06); border-radius:2px; margin:10px 0; overflow:hidden; }
+.pomo-bar { height:100%; border-radius:2px; background:linear-gradient(90deg,#7c3aed,#f59e0b); transition:width 0.5s; }
+.pomo-btns { display:flex; gap:8px; }
+.pomo-btn { flex:1; padding:8px; border-radius:10px; cursor:pointer; border:none; font-family:inherit; font-size:11px; font-weight:700; transition:all 0.2s; }
+.pomo-btn.start { background:rgba(124,58,237,0.2); color:#a78bfa; border:1px solid rgba(124,58,237,0.3); }
+.pomo-btn.start:hover { background:rgba(124,58,237,0.35); }
+.pomo-btn.stop { background:rgba(255,255,255,0.05); color:var(--muted); border:1px solid rgba(255,255,255,0.1); }
+.pomo-stats { display:flex; gap:6px; margin-top:10px; }
+.pomo-stat { flex:1; background:var(--s1); border:1px solid var(--b1); border-radius:8px; padding:8px; text-align:center; }
+.pomo-stat-v { font-size:18px; font-weight:900; font-family:'JetBrains Mono',monospace; }
+.pomo-stat-l { font-size:8px; color:var(--muted); margin-top:2px; }
+
+/* Tasks */
+.task-input-row { display:flex; gap:6px; margin-bottom:10px; }
+.task-input { flex:1; padding:7px 10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:var(--text); font-size:11px; font-family:inherit; outline:none; }
+.task-input:focus { border-color:rgba(124,58,237,0.4); }
+.task-add { padding:7px 12px; border-radius:8px; cursor:pointer; border:1px solid rgba(124,58,237,0.3); background:rgba(124,58,237,0.1); color:#a78bfa; font-size:11px; font-family:inherit; }
+.task-list { display:flex; flex-direction:column; gap:4px; }
+.task-item { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:8px; background:var(--s1); border:1px solid var(--b1); }
+.task-check { width:14px; height:14px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.2); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.task-check.done { background:#10b981; border-color:#10b981; }
+.task-check.done::after { content:'✓'; color:#fff; font-size:9px; }
+.task-text { flex:1; font-size:11px; }
+.task-text.done { text-decoration:line-through; color:var(--muted); }
+.task-del { cursor:pointer; color:rgba(239,68,68,0.3); font-size:12px; }
+.task-del:hover { color:#f87171; }
+
+/* Memo */
+.memo-area { width:100%; height:140px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:var(--text); font-size:12px; padding:10px; resize:none; font-family:inherit; outline:none; line-height:1.6; }
+.memo-area:focus { border-color:rgba(124,58,237,0.4); }
+.memo-save-info { font-size:9px; color:var(--muted); margin-top:6px; text-align:right; }
+
+/* Links */
+.link-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.link-card { display:block; padding:10px; background:var(--s1); border:1px solid var(--b1); border-radius:10px; text-decoration:none; color:var(--text); text-align:center; transition:all 0.2s; }
+.link-card:hover { border-color:rgba(124,58,237,0.4); background:rgba(124,58,237,0.06); }
+.link-icon { font-size:20px; margin-bottom:4px; }
+.link-name { font-size:10px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-logo">🌸</div>
+  <div>
+    <div class="header-title">Mira Hub</div>
+    <div class="header-sub"><span class="live-dot"></span>生産性アシスタント</div>
+  </div>
+  <div class="header-right">
+    <div id="hdr-tabs" style="font-size:10px;color:#34d399;"></div>
+    <div id="hdr-date" style="font-size:9px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tab-pomo" onclick="switchTab('pomo')">🍅 ポモ</button>
+  <button class="tab" id="tab-task" onclick="switchTab('task')">✅ タスク</button>
+  <button class="tab" id="tab-memo" onclick="switchTab('memo')">📝 メモ</button>
+  <button class="tab" id="tab-links" onclick="switchTab('links')">🔗 リンク</button>
+</div>
+
+<!-- POMO TAB -->
+<div class="section" id="sec-pomo">
+  <div class="pomo-ring">
+    <div class="pomo-time" id="pomo-time">25:00</div>
+    <div class="pomo-state" id="pomo-state">IDLE · 集中25分</div>
+  </div>
+  <div class="pomo-bar-wrap"><div class="pomo-bar" id="pomo-bar" style="width:100%;"></div></div>
+  <div class="pomo-btns">
+    <button class="pomo-btn start" id="pomo-start" onclick="pomoStart()">▶ 開始</button>
+    <button class="pomo-btn stop" onclick="pomoStop()">■ 停止</button>
+  </div>
+  <div class="pomo-stats">
+    <div class="pomo-stat">
+      <div class="pomo-stat-v" id="ps-sessions" style="color:#f59e0b;">0</div>
+      <div class="pomo-stat-l">セッション</div>
+    </div>
+    <div class="pomo-stat">
+      <div class="pomo-stat-v" id="ps-focus" style="color:#a78bfa;">0m</div>
+      <div class="pomo-stat-l">集中時間</div>
+    </div>
+    <div class="pomo-stat">
+      <div class="pomo-stat-v" id="ps-tabs" style="color:#34d399;">0</div>
+      <div class="pomo-stat-l">タブ数</div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK TAB -->
+<div class="section" id="sec-task" style="display:none;">
+  <div class="task-input-row">
+    <input type="text" class="task-input" id="task-input" placeholder="新しいタスクを入力..." maxlength="60">
+    <button class="task-add" onclick="addTask()">追加</button>
+  </div>
+  <div class="task-list" id="task-list"></div>
+</div>
+
+<!-- MEMO TAB -->
+<div class="section" id="sec-memo" style="display:none;">
+  <textarea class="memo-area" id="memo-area" placeholder="クイックメモ（自動保存）..."></textarea>
+  <div class="memo-save-info" id="memo-saved">— 最終保存: なし —</div>
+</div>
+
+<!-- LINKS TAB -->
+<div class="section" id="sec-links" style="display:none;">
+  <div class="link-grid" id="link-grid"></div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ポモドーロ | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
+  --text:#e2e8f0; --muted:#94a3b8;
+  --focus:#7c3aed; --short:#10b981; --long:#3b82f6;
+}
+body {
+  background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:16px;
+}
+.nav { display:flex; align-items:center; gap:10px; width:100%; max-width:440px; margin-bottom:24px; }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-t { font-size:14px; font-weight:900; flex:1; }
+
+/* MODE TABS */
+.mode-tabs { display:flex; gap:8px; margin-bottom:28px; }
+.mtab { padding:8px 20px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid var(--b1); background:var(--s1); color:var(--muted); transition:all 0.2s; }
+.mtab.active.focus  { background:rgba(124,58,237,0.15); border-color:rgba(124,58,237,0.4); color:#a78bfa; }
+.mtab.active.short  { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.4); color:#34d399; }
+.mtab.active.long   { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa; }
+
+/* SVG CLOCK */
+.clock-wrap { position:relative; width:240px; height:240px; margin-bottom:20px; }
+svg#clock { width:240px; height:240px; }
+.clock-bg { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:12; }
+.clock-arc { fill:none; stroke-width:12; stroke-linecap:round; transition:stroke 0.5s; }
+.clock-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.clock-time { font-size:44px; font-weight:900; font-family:'JetBrains Mono',monospace; letter-spacing:-2px; }
+.clock-label { font-size:11px; color:var(--muted); letter-spacing:0.2em; margin-top:4px; }
+
+/* CONTROLS */
+.controls { display:flex; gap:12px; margin-bottom:28px; }
+.ctrl-btn {
+  width:64px; height:64px; border-radius:50%; border:2px solid var(--b1);
+  background:var(--s1); color:var(--text); font-size:20px; cursor:pointer;
+  transition:all 0.2s; display:flex; align-items:center; justify-content:center;
+}
+.ctrl-btn.primary { border-color:rgba(124,58,237,0.5); background:rgba(124,58,237,0.1); font-size:24px; }
+.ctrl-btn:hover { transform:scale(1.08); }
+.ctrl-btn:active { transform:scale(0.95); }
+
+/* SESSION DOTS */
+.session-dots { display:flex; gap:8px; margin-bottom:28px; }
+.sdot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.1); transition:background 0.3s; }
+.sdot.done { background:#a78bfa; }
+.sdot.current { background:#7c3aed; box-shadow:0 0 8px rgba(124,58,237,0.5); animation:pulseDot 1s ease infinite alternate; }
+@keyframes pulseDot { to { box-shadow:0 0 16px rgba(124,58,237,0.8); } }
+
+/* TASK INPUT */
+.task-section { width:100%; max-width:440px; margin-bottom:20px; }
+.task-label { font-size:11px; color:var(--muted); margin-bottom:8px; letter-spacing:0.1em; }
+.task-input {
+  width:100%; padding:12px 16px; background:var(--s1); border:1px solid var(--b1);
+  border-radius:12px; color:var(--text); font-size:13px; font-family:inherit; outline:none;
+}
+.task-input:focus { border-color:rgba(124,58,237,0.4); }
+.task-input::placeholder { color:rgba(148,163,184,0.3); }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; max-width:440px; margin-bottom:20px; }
+.stat-card { background:var(--s1); border:1px solid var(--b1); border-radius:12px; padding:12px; text-align:center; }
+.stat-val { font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; line-height:1; }
+.stat-lbl { font-size:10px; color:var(--muted); margin-top:4px; }
+
+/* HISTORY */
+.history-section { width:100%; max-width:440px; }
+.hist-title { font-size:11px; color:var(--muted); margin-bottom:8px; letter-spacing:0.1em; }
+.hist-list { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; }
+.hist-list::-webkit-scrollbar { width:4px; }
+.hist-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+.hist-item {
+  display:flex; align-items:center; gap:10px; padding:8px 12px;
+  background:var(--s1); border:1px solid var(--b1); border-radius:8px;
+  font-size:11px;
+}
+.hist-badge { padding:2px 8px; border-radius:10px; font-size:9px; font-family:'JetBrains Mono',monospace; font-weight:700; flex-shrink:0; }
+.hist-task { flex:1; color:var(--muted); }
+.hist-time { color:rgba(148,163,184,0.4); font-family:'JetBrains Mono',monospace; }
+
+/* SETTINGS */
+.settings-row { display:flex; gap:8px; margin-bottom:20px; }
+.setting-item { flex:1; }
+.setting-item label { font-size:10px; color:var(--muted); display:block; margin-bottom:4px; }
+.setting-item input[type=number] {
+  width:100%; padding:6px 10px; background:var(--s1); border:1px solid var(--b1);
+  border-radius:8px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; outline:none;
+  text-align:center;
+}
+.setting-item input[type=number]:focus { border-color:rgba(124,58,237,0.4); }
+</style>
+</head>
+<body>
+<div class="nav" style="width:100%;max-width:440px;">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-t">🍅 ポモドーロ</div>
+</div>
+
+<div class="mode-tabs">
+  <button class="mtab active focus" id="tab-focus" onclick="setMode('focus')">集中</button>
+  <button class="mtab short" id="tab-short" onclick="setMode('short')">短休憩</button>
+  <button class="mtab long" id="tab-long" onclick="setMode('long')">長休憩</button>
+</div>
+
+<!-- SVG CLOCK FACE -->
+<div class="clock-wrap">
+  <svg id="clock" viewBox="0 0 240 240">
+    <circle class="clock-bg" cx="120" cy="120" r="104"/>
+    <circle class="clock-arc" id="clockArc" cx="120" cy="120" r="104"
+      stroke="#7c3aed" stroke-dasharray="653.12" stroke-dashoffset="0"
+      transform="rotate(-90 120 120)"/>
+  </svg>
+  <div class="clock-center">
+    <div class="clock-time" id="clockTime">25:00</div>
+    <div class="clock-label" id="clockLabel">集中セッション</div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button class="ctrl-btn" onclick="resetTimer()" title="リセット">↺</button>
+  <button class="ctrl-btn primary" id="playBtn" onclick="toggleTimer()">▶</button>
+  <button class="ctrl-btn" onclick="skipSession()" title="スキップ">⏭</button>
+</div>
+
+<!-- SESSION DOTS (4 pomodoros) -->
+<div class="session-dots" id="sessionDots">
+  <div class="sdot current"></div>
+  <div class="sdot"></div>
+  <div class="sdot"></div>
+  <div class="sdot"></div>
+</div>
+
+<!-- TASK -->
+<div class="task-section">
+  <div class="task-label">NOW WORKING ON</div>
+  <input type="text" class="task-input" id="taskInput" placeholder="今セッションで取り組むタスクを入力..." maxlength="60">
+</div>
+
+<!-- SETTINGS -->
+<div class="settings-row" style="width:100%;max-width:440px;">
+  <div class="setting-item">
+    <label>集中（分）</label>
+    <input type="number" id="set-focus" value="25" min="1" max="90" onchange="updateSettings()">
+  </div>
+  <div class="setting-item">
+    <label>短休憩（分）</label>
+    <input type="number" id="set-short" value="5" min="1" max="30" onchange="updateSettings()">
+  </div>
+  <div class="setting-item">
+    <label>長休憩（分）</label>
+    <input type="number" id="set-long" value="15" min="5" max="60" onchange="updateSettings()">
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-val" id="stat-today" style="color:#a78bfa;">0</div>
+    <div class="stat-lbl">今日のセッション</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" id="stat-total" style="color:#34d399;">0</div>
+    <div class="stat-lbl">累計セッション</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" id="stat-mins" style="color:#f59e0b;">0</div>
+    <div class="stat-lbl">累計集中分</div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="history-section">
+  <div class="hist-title">セッション履歴</div>
+  <div class="hist-list" id="histList"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'mira-pomo-v1';
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+let settings = { focus:25, short:5, long:15 };
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+if (!data.totalSessions) data.totalSessions = 0;
+if (!data.totalMins) data.totalMins = 0;
+if (!data.history) data.history = [];
+if (!data.todayDate) data.todayDate = '';
+if (!data.todayCount) data.todayCount = 0;
+
+// Check today
+const today = new Date().toISOString().slice(0,10);
+if (data.todayDate !== today) { data.todayDate = today; data.todayCount = 0; }
+
+// ─── Timer state ──────────────────────────────────────────────────────────────
+let mode = 'focus';  // 'focus' | 'short' | 'long'
+let sessionIdx = 0;  // 0-3
+let running = false;
+let remaining = settings.focus * 60;
+let totalSeconds = settings.focus * 60;
+let intervalId = null;
+
+// ─── Web Audio alarm ─────────────────────────────────────────────────────────
+let audioCtx = null;
+function playAlarm(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const freqs = type === 'focus' ? [880, 1108, 1320] : [660, 880, 660];
+    freqs.forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.frequency.value = f;
+      osc.type = 'sine';
+      const t = audioCtx.currentTime + i * 0.25;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.3, t + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + 0.45);
+    });
+  } catch(e) {}
+}
+
+// ─── Timer logic ──────────────────────────────────────────────────────────────
+function toggleTimer() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  running = !running;
+  document.getElementById('playBtn').textContent = running ? '⏸' : '▶';
+  if (running) {
+    intervalId = setInterval(tick, 1000);
+  } else {
+    clearInterval(intervalId);
+  }
+}
+window.toggleTimer = toggleTimer;
+
+function tick() {
+  remaining--;
+  render();
+  if (remaining <= 0) {
+    clearInterval(intervalId);
+    running = false;
+    document.getElementById('playBtn').textContent = '▶';
+    onSessionComplete();
+  }
+}
+
+function onSessionComplete() {
+  playAlarm(mode);
+  if (mode === 'focus') {
+    // Log
+    const task = document.getElementById('taskInput').value || '（タスク名なし）';
+    const mins = settings.focus;
+    data.totalSessions++;
+    data.totalMins += mins;
+    data.todayCount++;
+    data.history.unshift({ task, mins, mode:'集中', date: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) });
+    if (data.history.length > 20) data.history.pop();
+    saveData();
+    renderStats();
+    renderHistory();
+    // Advance session dots
+    sessionIdx = (sessionIdx + 1) % 4;
+    // After 4 pomodoros → suggest long break
+    const next = sessionIdx === 0 ? 'long' : 'short';
+    setTimeout(() => setMode(next), 500);
+  } else {
+    setTimeout(() => setMode('focus'), 500);
+  }
+}
+
+function resetTimer() {
+  clearInterval(intervalId);
+  running = false;
+  document.getElementById('playBtn').textContent = '▶';
+  remaining = totalSeconds;
+  render();
+}
+window.resetTimer = resetTimer;
+
+function skipSession() {
+  clearInterval(intervalId);
+  running = false;
+  document.getElementById('playBtn').textContent = '▶';
+  onSessionComplete();
+}
+window.skipSession = skipSession;
+
+// ─── Mode ─────────────────────────────────────────────────────────────────────
+function setMode(m) {
+  clearInterval(intervalId);
+  running = false;
+  document.getElementById('playBtn').textContent = '▶';
+  mode = m;
+  const secs = { focus: settings.focus, short: settings.short, long: settings.long }[m] * 60;
+  remaining = secs; totalSeconds = secs;
+  // Tab styling
+  ['focus','short','long'].forEach(id => {
+    const btn = document.getElementById('tab-' + id);
+    btn.className = 'mtab ' + id + (id === m ? ' active' : '');
+  });
+  const labels = { focus:'集中セッション', short:'短い休憩', long:'長い休憩' };
+  document.getElementById('clockLabel').textContent = labels[m];
+  const colors = { focus:'#7c3aed', short:'#10b981', long:'#3b82f6' };
+  document.getElementById('clockArc').setAttribute('stroke', colors[m]);
+  render();
+}
+window.setMode = setMode;
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const mins = Math.floor(remaining / 60).toString().padStart(2,'0');
+  const secs = (remaining % 60).toString().padStart(2,'0');
+  document.getElementById('clockTime').textContent = `${mins}:${secs}`;
+  // Arc
+  const circumference = 2 * Math.PI * 104; // 653.12
+  const fraction = remaining / totalSeconds;
+  const offset = circumference * (1 - fraction);
+  document.getElementById('clockArc').setAttribute('stroke-dashoffset', offset);
+  // Session dots
+  const dots = document.getElementById('sessionDots').children;
+  for (let i = 0; i < 4; i++) {
+    dots[i].className = 'sdot' + (i < sessionIdx ? ' done' : i === sessionIdx ? ' current' : '');
+  }
+  // Title bar
+  document.title = `${mins}:${secs} — ${mode === 'focus' ? '集中中' : '休憩中'} | ポモドーロ`;
+}
+
+function updateSettings() {
+  settings.focus = parseInt(document.getElementById('set-focus').value) || 25;
+  settings.short = parseInt(document.getElementById('set-short').value) || 5;
+  settings.long  = parseInt(document.getElementById('set-long').value) || 15;
+  setMode(mode);
+}
+window.updateSettings = updateSettings;
+
+function renderStats() {
+  document.getElementById('stat-today').textContent = data.todayCount;
+  document.getElementById('stat-total').textContent = data.totalSessions;
+  document.getElementById('stat-mins').textContent = data.totalMins;
+}
+
+function renderHistory() {
+  const el = document.getElementById('histList');
+  if (data.history.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(148,163,184,0.3);padding:8px;">履歴なし</div>'; return; }
+  const colors = { '集中':'#a78bfa', '短休憩':'#34d399', '長休憩':'#60a5fa' };
+  el.innerHTML = data.history.map(h => `
+    <div class="hist-item">
+      <span class="hist-badge" style="background:${colors[h.mode]||'#a78bfa'}22;color:${colors[h.mode]||'#a78bfa'};border:1px solid ${colors[h.mode]||'#a78bfa'}44;">${h.mode}</span>
+      <span class="hist-task">${h.task}</span>
+      <span class="hist-time">${h.date}</span>
+    </div>`).join('');
+}
+
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+render();
+renderStats();
+renderHistory();
+</script>
+</body>
+</html>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Meshy クレジット管理 | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #07070f;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.07);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #a78bfa;
+  --gold: #f59e0b;
+  --green: #10b981;
+  --red: #f43f5e;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+  padding: 0 0 80px;
+}
+
+/* ─── Header ─── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(7,7,15,0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-logo {
+  font-size: 14px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #a78bfa, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.home-a { font-size: 11px; color: var(--muted); text-decoration: none; }
+
+/* ─── Main ─── */
+.main { padding: 20px 16px; max-width: 500px; margin: 0 auto; }
+
+/* ─── Credit Gauge ─── */
+.gauge-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.gauge-title {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.gauge-nums {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.gauge-remaining {
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+}
+.gauge-total {
+  font-size: 18px;
+  color: var(--muted);
+}
+.gauge-bar-wrap {
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px;
+  height: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.gauge-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+.gauge-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+.gauge-reset-info {
+  font-size: 11px;
+  color: rgba(148,163,184,0.5);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ─── Quick Log Buttons ─── */
+.section-title {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.quick-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  text-align: center;
+  transition: all 0.2s;
+}
+.quick-btn:active { transform: scale(0.96); }
+.quick-btn:hover { border-color: rgba(167,139,250,0.4); background: rgba(124,58,237,0.06); }
+.quick-icon { font-size: 20px; margin-bottom: 4px; }
+.quick-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.quick-cr {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+.quick-desc { font-size: 10px; color: var(--muted); }
+
+/* ─── Log Table ─── */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.log-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.log-icon { font-size: 18px; min-width: 22px; text-align: center; }
+.log-body { flex: 1; }
+.log-name { font-size: 13px; font-weight: 700; }
+.log-date { font-size: 10px; color: var(--muted); }
+.log-cr {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--red);
+}
+.log-cr.gain { color: var(--green); }
+.log-del {
+  font-size: 11px;
+  color: rgba(148,163,184,0.4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px;
+}
+.log-del:active { color: var(--red); }
+
+/* ─── Manual Add ─── */
+.manual-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.form-row { display: flex; gap: 10px; align-items: flex-end; }
+.form-group { flex: 1; }
+.form-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 5px; display: block; }
+.form-input, .form-select {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+.form-select option { background: #0f0f1c; }
+.add-btn {
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.4);
+  color: #a78bfa;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.add-btn:active { transform: scale(0.96); }
+
+/* ─── Reference Table ─── */
+.ref-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ref-table th {
+  background: rgba(255,255,255,0.05);
+  padding: 7px 10px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.ref-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.ref-table tr:last-child td { border-bottom: none; }
+.cr-num { font-weight: 700; color: var(--gold); }
+.ref-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Meshy クレジット管理</div>
+  <a href="index.html" class="home-a">← ホーム</a>
+</div>
+
+<div class="main">
+
+  <!-- Credit Gauge -->
+  <div class="gauge-card">
+    <div class="gauge-title">REMAINING CREDITS · PRO PLAN</div>
+    <div class="gauge-nums">
+      <div class="gauge-remaining" id="gaugeNum" style="color:#a78bfa;">980</div>
+      <div class="gauge-total">/ 1000</div>
+    </div>
+    <div class="gauge-bar-wrap">
+      <div class="gauge-bar-fill" id="gaugeBar" style="width:98%;background:linear-gradient(90deg,#7c3aed,#f59e0b);"></div>
+    </div>
+    <div class="gauge-stats">
+      <span id="gaugePct">98% 残存</span>
+      <span id="gaugeUsed">使用: 20 cr</span>
+    </div>
+    <div class="gauge-reset-info" id="gaugeResetInfo">月次リセット · 繰越なし</div>
+  </div>
+
+  <!-- Quick Log -->
+  <div class="section-title">QUICK LOG · タップで使用記録</div>
+
+  <div class="quick-grid">
+    <button class="quick-btn" onclick="logQuick('🔮 Image Preview','Image-to-3D Preview',20)">
+      <div class="quick-icon">🔮</div>
+      <div class="quick-name">Image Preview</div>
+      <div class="quick-cr">-20 cr</div>
+      <div class="quick-desc">形状確認</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('✨ Image Refine','Image-to-3D Refine (texture)',10)">
+      <div class="quick-icon">✨</div>
+      <div class="quick-name">Image Refine</div>
+      <div class="quick-cr">-10 cr</div>
+      <div class="quick-desc">テクスチャ込み</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('🎨 Retexture','Retexture (改善)',10)">
+      <div class="quick-icon">🎨</div>
+      <div class="quick-name">Retexture</div>
+      <div class="quick-cr">-10 cr</div>
+      <div class="quick-desc">暗い/シルエット改善</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('⚙️ Remesh','Remesh (面数削減)',5)">
+      <div class="quick-icon">⚙️</div>
+      <div class="quick-name">Remesh</div>
+      <div class="quick-cr">-5 cr</div>
+      <div class="quick-desc">30万面以下に</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('🦴 Auto-Rig','Auto-Rigging (walk+run同梱)',5)">
+      <div class="quick-icon">🦴</div>
+      <div class="quick-name">Auto-Rig</div>
+      <div class="quick-cr">-5 cr</div>
+      <div class="quick-desc">walk+run同梱</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('🎬 Animation','Animationライブラリ追加',3)">
+      <div class="quick-icon">🎬</div>
+      <div class="quick-name">Animation</div>
+      <div class="quick-cr">-3 cr</div>
+      <div class="quick-desc">action_id指定</div>
+    </button>
+    <button class="quick-btn" onclick="logQuick('🔄 失敗返還','FAILED → 全額返還',0,'gain')">
+      <div class="quick-icon">🔄</div>
+      <div class="quick-name">失敗返還</div>
+      <div class="quick-cr" style="color:var(--green);">+返還</div>
+      <div class="quick-desc">自動全額返還</div>
+    </button>
+    <button class="quick-btn" onclick="promptAddCredits()">
+      <div class="quick-icon">🔋</div>
+      <div class="quick-name">月次リセット</div>
+      <div class="quick-cr" style="color:var(--green);">+1000</div>
+      <div class="quick-desc">月初補充</div>
+    </button>
+  </div>
+
+  <!-- Manual Entry -->
+  <div class="section-title">MANUAL ENTRY</div>
+  <div class="manual-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">説明</label>
+        <input class="form-input" id="manualName" placeholder="例：メンバーB Preview">
+      </div>
+      <div class="form-group" style="max-width:80px;">
+        <label class="form-label">CR</label>
+        <input class="form-input" id="manualCr" type="number" placeholder="20" min="1" max="1000">
+      </div>
+      <div class="form-group" style="max-width:80px;">
+        <label class="form-label">種別</label>
+        <select class="form-select" id="manualType">
+          <option value="use">使用</option>
+          <option value="gain">補充</option>
+        </select>
+      </div>
+      <button class="add-btn" onclick="addManual()">追加</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="section-title">USAGE LOG</div>
+  <div class="log-list" id="logList"></div>
+
+  <!-- Reference -->
+  <div class="section-title" style="margin-top:28px;">CREDIT REFERENCE</div>
+  <div class="ref-wrap">
+    <table class="ref-table">
+      <thead><tr><th>タスク</th><th>CR</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>Image-to-3D Preview</td><td class="cr-num">20</td><td>形状確認。Two-stepの第1段</td></tr>
+        <tr><td>Refine（テクスチャ込）</td><td class="cr-num">+10</td><td>Preview OKなら追加</td></tr>
+        <tr><td>Retexture</td><td class="cr-num">10</td><td>暗い/シルエット改善</td></tr>
+        <tr><td>Remesh</td><td class="cr-num">5</td><td>30万面以下が条件</td></tr>
+        <tr><td>Auto-Rigging</td><td class="cr-num">5</td><td>walk+run同梱。1回で再利用可</td></tr>
+        <tr><td>Animation ライブラリ</td><td class="cr-num">3</td><td>action_id指定。必要な時だけ</td></tr>
+        <tr><td>キャラクター3D化（目安）</td><td class="cr-num">~270</td><td>残980crで余裕あり</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const STORAGE = 'mira-meshy-credits-v1';
+const MONTHLY_MAX = 1000;
+
+function loadData() {
+  const saved = localStorage.getItem(STORAGE);
+  if (saved) return JSON.parse(saved);
+  // Default: started with 1000, used 20 for souga preview
+  return {
+    balance: 980,
+    log: [
+      { id: 'l0', date: '2026/06/14', icon: '🔮', name: 'メンバーB Image Preview', cr: 20, type: 'use' },
+      { id: 'l00', date: '2026/06/01', icon: '🔋', name: '月次リセット (6月)', cr: 1000, type: 'gain' },
+    ]
+  };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE, JSON.stringify(data));
+}
+
+let data = loadData();
+
+function render() {
+  // Gauge
+  const pct = Math.max(0, Math.min(100, (data.balance / MONTHLY_MAX) * 100));
+  document.getElementById('gaugeNum').textContent = data.balance;
+  document.getElementById('gaugeBar').style.width = pct + '%';
+  const barEl = document.getElementById('gaugeBar');
+  if (pct > 50) barEl.style.background = 'linear-gradient(90deg,#7c3aed,#a78bfa)';
+  else if (pct > 20) barEl.style.background = 'linear-gradient(90deg,#d97706,#f59e0b)';
+  else barEl.style.background = 'linear-gradient(90deg,#dc2626,#f43f5e)';
+  document.getElementById('gaugePct').textContent = Math.round(pct) + '% 残存';
+  const used = data.log.filter(l => l.type === 'use').reduce((s, l) => s + l.cr, 0)
+             - data.log.filter(l => l.type === 'gain' && l.name.includes('リセット')).reduce((s, l) => s + l.cr - 1000, 0);
+  document.getElementById('gaugeUsed').textContent = '使用: ' + Math.max(0, MONTHLY_MAX - data.balance) + ' cr';
+
+  // Log
+  const logEl = document.getElementById('logList');
+  logEl.innerHTML = '';
+  [...data.log].reverse().forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'log-item';
+    el.innerHTML = `
+      <div class="log-icon">${l.icon}</div>
+      <div class="log-body">
+        <div class="log-name">${escHtml(l.name)}</div>
+        <div class="log-date">${l.date}</div>
+      </div>
+      <div class="log-cr ${l.type === 'gain' ? 'gain' : ''}">${l.type === 'gain' ? '+' : '-'}${l.cr} cr</div>
+      <button class="log-del" onclick="deleteLog('${l.id}')">✕</button>
+    `;
+    logEl.appendChild(el);
+  });
+  if (data.log.length === 0) {
+    logEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">記録なし</div>';
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function today() {
+  const d = new Date();
+  return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+}
+
+function logQuick(icon, name, cr, type) {
+  if (type === 'gain' || cr === 0) return; // for special buttons handled separately
+  data.log.push({ id: 'l' + Date.now(), date: today(), icon: icon.split(' ')[0], name, cr, type: 'use' });
+  data.balance = Math.max(0, data.balance - cr);
+  saveData(data); render();
+}
+
+function promptAddCredits() {
+  data.log.push({ id: 'l' + Date.now(), date: today(), icon: '🔋', name: '月次リセット', cr: 1000, type: 'gain' });
+  data.balance = 1000;
+  saveData(data); render();
+}
+
+function addManual() {
+  const name = document.getElementById('manualName').value.trim();
+  const cr = parseInt(document.getElementById('manualCr').value) || 0;
+  const type = document.getElementById('manualType').value;
+  if (!name || cr <= 0) return;
+  const icons = { use: '📦', gain: '🔋' };
+  data.log.push({ id: 'l' + Date.now(), date: today(), icon: icons[type], name, cr, type });
+  if (type === 'use') data.balance = Math.max(0, data.balance - cr);
+  else data.balance = Math.min(MONTHLY_MAX, data.balance + cr);
+  saveData(data);
+  document.getElementById('manualName').value = '';
+  document.getElementById('manualCr').value = '';
+  render();
+}
+
+function deleteLog(id) {
+  const l = data.log.find(x => x.id === id);
+  if (!l) return;
+  // Revert balance
+  if (l.type === 'use') data.balance += l.cr;
+  else data.balance -= l.cr;
+  data.balance = Math.max(0, Math.min(MONTHLY_MAX, data.balance));
+  data.log = data.log.filter(x => x.id !== id);
+  saveData(data); render();
+}
+
+render();
+</script>
+</body>
+</html>

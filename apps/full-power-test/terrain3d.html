@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D テレイン | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'JetBrains Mono',monospace; }
+canvas { display:block; width:100vw; height:100vh; }
+.hud {
+  position:fixed; top:0; left:0; right:0; z-index:10;
+  padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,transparent 100%);
+  pointer-events:none;
+}
+.hud-title { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.2em; }
+.hud-fps   { font-size:10px; color:rgba(255,255,255,0.3); }
+.bottom {
+  position:fixed; bottom:0; left:0; right:0; z-index:10;
+  padding:12px 18px; display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(0deg,rgba(0,0,0,0.7) 0%,transparent 100%);
+}
+.btn { font-size:10px; padding:5px 14px; border-radius:16px; cursor:pointer; font-family:'JetBrains Mono',monospace; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.45); transition:all 0.2s; }
+.btn:hover { color:#fff; border-color:rgba(255,255,255,0.4); }
+.btn.active { border-color:rgba(124,58,237,0.5); color:#a78bfa; background:rgba(124,58,237,0.1); }
+.btns { display:flex; gap:6px; }
+.back { color:rgba(255,255,255,0.3); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid rgba(255,255,255,0.1); border-radius:16px; }
+.tech { position:fixed; bottom:44px; right:16px; font-size:9px; color:rgba(255,255,255,0.2); line-height:1.8; text-align:right; z-index:10; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div class="hud-title">MIRA · PROCEDURAL 3D TERRAIN · Raw WebGL</div>
+  <div class="hud-fps" id="fps">FPS: --</div>
+</div>
+<div class="bottom">
+  <a href="index.html" class="back">← HOME</a>
+  <div class="btns">
+    <button class="btn active" onclick="setTheme('night',this)">NIGHT</button>
+    <button class="btn" onclick="setTheme('dawn',this)">DAWN</button>
+    <button class="btn" onclick="setTheme('ocean',this)">OCEAN</button>
+    <button class="btn" onclick="setTheme('lava',this)">LAVA</button>
+    <button class="btn" onclick="toggleWire(this)">WIRE</button>
+  </div>
+</div>
+<div class="tech">
+  Raw WebGL 1.0 · Perlin噪声 · 手書き行列演算<br>
+  Gouraud shading · Zero libraries
+</div>
+
+<script id="vs" type="x-shader/x-vertex">
+attribute vec3 a_pos;
+attribute float a_height;  /* 0..1 normalized height */
+
+uniform mat4 u_mvp;
+uniform float u_time;
+uniform float u_wave;
+
+varying float v_height;
+varying vec3 v_world;
+varying float v_fog;
+
+void main() {
+  vec3 pos = a_pos;
+  /* Animated wave */
+  pos.y += sin(pos.x * 0.8 + u_time) * 0.08 * u_wave;
+  pos.y += sin(pos.z * 0.6 + u_time * 1.3) * 0.06 * u_wave;
+
+  v_height = a_height + pos.y * 0.05;
+  v_world  = pos;
+
+  float dist = length(pos.xz);
+  v_fog = 1.0 - smoothstep(8.0, 22.0, dist);
+
+  gl_Position = u_mvp * vec4(pos, 1.0);
+  gl_PointSize = 2.0;
+}
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+precision mediump float;
+varying float v_height;
+varying vec3 v_world;
+varying float v_fog;
+
+uniform vec3 u_low;
+uniform vec3 u_mid;
+uniform vec3 u_high;
+uniform vec3 u_peak;
+uniform vec3 u_fog_color;
+uniform float u_time;
+
+void main() {
+  /* Height-based color blend */
+  vec3 color;
+  if (v_height < 0.25) {
+    color = mix(u_low, u_mid, v_height * 4.0);
+  } else if (v_height < 0.6) {
+    color = mix(u_mid, u_high, (v_height - 0.25) / 0.35);
+  } else {
+    color = mix(u_high, u_peak, (v_height - 0.6) / 0.4);
+  }
+
+  /* Fake diffuse: slope-based */
+  float slope = abs(v_height - 0.5) * 1.2;
+  color *= 0.7 + slope * 0.6;
+
+  /* Shimmer on high points */
+  if (v_height > 0.75) {
+    float shimmer = sin(v_world.x * 5.0 + u_time) * sin(v_world.z * 5.0 + u_time * 1.2);
+    color += vec3(shimmer * 0.08);
+  }
+
+  /* Fog */
+  color = mix(u_fog_color, color, v_fog);
+
+  gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+// ─── Compile shaders ──────────────────────────────────────────────────────────
+function compileShader(type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(sh)); return null;
+  }
+  return sh;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, document.getElementById('vs').textContent));
+gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+// ─── Locations ────────────────────────────────────────────────────────────────
+const aPos    = gl.getAttribLocation(prog, 'a_pos');
+const aHeight = gl.getAttribLocation(prog, 'a_height');
+const uMvp    = gl.getUniformLocation(prog, 'u_mvp');
+const uTime   = gl.getUniformLocation(prog, 'u_time');
+const uWave   = gl.getUniformLocation(prog, 'u_wave');
+const uLow    = gl.getUniformLocation(prog, 'u_low');
+const uMid    = gl.getUniformLocation(prog, 'u_mid');
+const uHigh   = gl.getUniformLocation(prog, 'u_high');
+const uPeak   = gl.getUniformLocation(prog, 'u_peak');
+const uFog    = gl.getUniformLocation(prog, 'u_fog_color');
+
+// ─── Matrix math (hand-rolled, no gl-matrix) ──────────────────────────────────
+const mat4 = {
+  identity: () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]),
+  multiply: (a, b) => {
+    const r = new Float32Array(16);
+    for (let i=0;i<4;i++) for (let j=0;j<4;j++)
+      r[i*4+j] = a[i*4]*b[j] + a[i*4+1]*b[4+j] + a[i*4+2]*b[8+j] + a[i*4+3]*b[12+j];
+    return r;
+  },
+  perspective: (fov, aspect, near, far) => {
+    const f = 1 / Math.tan(fov / 2);
+    const nf = 1 / (near - far);
+    return new Float32Array([
+      f/aspect,0,0,0,
+      0,f,0,0,
+      0,0,(far+near)*nf,-1,
+      0,0,2*far*near*nf,0
+    ]);
+  },
+  rotateY: (m, angle) => {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const rot = new Float32Array([c,0,s,0, 0,1,0,0, -s,0,c,0, 0,0,0,1]);
+    return mat4.multiply(rot, m);
+  },
+  rotateX: (m, angle) => {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const rot = new Float32Array([1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1]);
+    return mat4.multiply(rot, m);
+  },
+  translate: (m, tx, ty, tz) => {
+    const t = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,tz,1]);
+    return mat4.multiply(t, m);
+  },
+};
+
+// ─── Perlin noise (classic 2D) ────────────────────────────────────────────────
+const PERM = new Uint8Array(512);
+(function() {
+  const p = [...Array(256)].map((_,i)=>i);
+  for (let i=255;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [p[i],p[j]]=[p[j],p[i]]; }
+  for (let i=0;i<512;i++) PERM[i] = p[i & 255];
+})();
+
+function grad(hash, x, y) {
+  const h = hash & 7;
+  const u = h < 4 ? x : y;
+  const v = h < 4 ? y : x;
+  return ((h&1)?-u:u) + ((h&2)?-v:v);
+}
+function fade(t) { return t*t*t*(t*(t*6-15)+10); }
+function lerp(a, b, t) { return a + t*(b-a); }
+
+function perlin(x, y) {
+  const X = Math.floor(x)&255, Y = Math.floor(y)&255;
+  x -= Math.floor(x); y -= Math.floor(y);
+  const u = fade(x), v = fade(y);
+  const aa = PERM[PERM[X  ]+Y], ab = PERM[PERM[X  ]+Y+1];
+  const ba = PERM[PERM[X+1]+Y], bb = PERM[PERM[X+1]+Y+1];
+  return lerp(lerp(grad(aa,x,y), grad(ba,x-1,y), u),
+              lerp(grad(ab,x,y-1), grad(bb,x-1,y-1), u), v);
+}
+
+function fbm(x, y, octaves=5) {
+  let v = 0, amp = 0.5, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    v += perlin(x*freq, y*freq) * amp;
+    max += amp; amp *= 0.5; freq *= 2.1;
+  }
+  return v / max;
+}
+
+// ─── Terrain mesh ─────────────────────────────────────────────────────────────
+const GRID = 80;        // vertices per side
+const SIZE = 24;        // world units
+
+let posBuffer, heightBuffer, indexBuffer;
+let indexCount = 0;
+
+function buildTerrain() {
+  const verts  = [];
+  const heights = [];
+  const indices = [];
+
+  for (let iz = 0; iz < GRID; iz++) {
+    for (let ix = 0; ix < GRID; ix++) {
+      const x = (ix / (GRID-1) - 0.5) * SIZE;
+      const z = (iz / (GRID-1) - 0.5) * SIZE;
+
+      const n = fbm(ix * 0.06, iz * 0.06);
+      const h = Math.pow(Math.max(0, n + 0.1), 1.5) * 4.0;
+
+      // Distance falloff for bowl shape
+      const dist = Math.sqrt(x*x + z*z) / (SIZE*0.5);
+      const falloff = Math.max(0, 1 - dist*dist*0.9);
+
+      verts.push(x, h * falloff, z);
+      heights.push((n + 1) / 2 * falloff);  // 0..1
+    }
+  }
+
+  for (let iz = 0; iz < GRID-1; iz++) {
+    for (let ix = 0; ix < GRID-1; ix++) {
+      const a = iz*GRID+ix, b = iz*GRID+ix+1;
+      const c = (iz+1)*GRID+ix, d = (iz+1)*GRID+ix+1;
+      indices.push(a, b, c,  b, d, c);
+    }
+  }
+
+  posBuffer    = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+  heightBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, heightBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(heights), gl.STATIC_DRAW);
+
+  indexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+  indexCount = indices.length;
+}
+buildTerrain();
+
+// ─── Themes ───────────────────────────────────────────────────────────────────
+const THEMES = {
+  night: {
+    low: [0.05, 0.1, 0.25],
+    mid: [0.12, 0.25, 0.15],
+    high:[0.3, 0.35, 0.2],
+    peak:[0.85, 0.9, 0.95],
+    fog: [0.02, 0.02, 0.08],
+    wave: 0,
+    bg: [0.02, 0.02, 0.08],
+  },
+  dawn: {
+    low: [0.1, 0.05, 0.1],
+    mid: [0.5, 0.25, 0.1],
+    high:[0.8, 0.5, 0.2],
+    peak:[1.0, 0.9, 0.8],
+    fog: [0.15, 0.07, 0.05],
+    wave: 0,
+    bg: [0.15, 0.07, 0.05],
+  },
+  ocean: {
+    low: [0.03, 0.1, 0.4],
+    mid: [0.0, 0.4, 0.5],
+    high:[0.6, 0.8, 0.7],
+    peak:[0.95, 0.98, 1.0],
+    fog: [0.02, 0.05, 0.15],
+    wave: 1.0,
+    bg: [0.02, 0.05, 0.15],
+  },
+  lava: {
+    low: [0.02, 0.01, 0.01],
+    mid: [0.5, 0.1, 0.0],
+    high:[0.9, 0.4, 0.0],
+    peak:[1.0, 0.85, 0.2],
+    fog: [0.06, 0.01, 0.0],
+    wave: 0,
+    bg: [0.06, 0.01, 0.0],
+  },
+};
+
+let currentTheme = THEMES.night;
+let wireMode = false;
+
+function setTheme(name, btn) {
+  currentTheme = THEMES[name];
+  document.querySelectorAll('.btn:not(.back)').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (wireMode) document.querySelector('[onclick="toggleWire(this)"]').classList.add('active');
+}
+window.setTheme = setTheme;
+
+function toggleWire(btn) {
+  wireMode = !wireMode;
+  btn.classList.toggle('active', wireMode);
+}
+window.toggleWire = toggleWire;
+
+// ─── Camera orbit ─────────────────────────────────────────────────────────────
+let camTheta = 0;
+let camPhi   = 0.35;
+let autoRotate = true;
+
+// Mouse/touch orbit
+let pointerDown = false, px0 = 0, py0 = 0, th0 = 0, ph0 = 0;
+canvas.addEventListener('pointerdown', e => {
+  pointerDown = true; px0 = e.clientX; py0 = e.clientY;
+  th0 = camTheta; ph0 = camPhi; autoRotate = false;
+});
+canvas.addEventListener('pointermove', e => {
+  if (!pointerDown) return;
+  camTheta = th0 - (e.clientX - px0) * 0.005;
+  camPhi   = Math.max(0.1, Math.min(1.1, ph0 + (e.clientY - py0) * 0.003));
+});
+canvas.addEventListener('pointerup', () => { pointerDown = false; });
+// resume auto-rotate after 3 seconds of inactivity
+let autoTimer;
+canvas.addEventListener('pointerup', () => {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => { autoRotate = true; }, 3000);
+});
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = window.innerWidth  * dpr;
+  canvas.height = window.innerHeight * dpr;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Render loop ─────────────────────────────────────────────────────────────
+let t0 = performance.now(), frames = 0, fps = 60, lastFps = 0;
+
+function render() {
+  requestAnimationFrame(render);
+
+  const now = performance.now();
+  const t   = (now - t0) / 1000;
+  frames++;
+  if (now - lastFps >= 1000) { fps = frames; frames = 0; lastFps = now;
+    document.getElementById('fps').textContent = 'FPS: ' + fps; }
+
+  if (autoRotate) camTheta = t * 0.18;
+
+  const bg = currentTheme.bg;
+  gl.clearColor(bg[0], bg[1], bg[2], 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+
+  // MVP
+  const aspect = canvas.width / canvas.height;
+  const proj   = mat4.perspective(0.7, aspect, 0.1, 100);
+
+  const camR   = 18;
+  const camY   = Math.sin(camPhi) * camR;
+  const camXZ  = Math.cos(camPhi) * camR;
+  const camX   = Math.sin(camTheta) * camXZ;
+  const camZ   = Math.cos(camTheta) * camXZ;
+
+  // Simple lookAt (target = origin)
+  const fx = -camX, fy = -camY, fz = -camZ;
+  const fl = Math.sqrt(fx*fx+fy*fy+fz*fz);
+  const f  = [fx/fl, fy/fl, fz/fl];
+  const up = [0,1,0];
+  const rx = f[1]*up[2]-f[2]*up[1], ry = f[2]*up[0]-f[0]*up[2], rz = f[0]*up[1]-f[1]*up[0];
+  const rl = Math.sqrt(rx*rx+ry*ry+rz*rz);
+  const r  = [rx/rl, ry/rl, rz/rl];
+  const ux = r[1]*f[2]-r[2]*f[1], uy = r[2]*f[0]-r[0]*f[2], uz = r[0]*f[1]-r[1]*f[0];
+
+  const view = new Float32Array([
+    r[0], ux, -f[0], 0,
+    r[1], uy, -f[1], 0,
+    r[2], uz, -f[2], 0,
+    -(r[0]*camX+r[1]*camY+r[2]*camZ),
+    -(ux*camX+uy*camY+uz*camZ),
+    (f[0]*camX+f[1]*camY+f[2]*camZ), 1
+  ]);
+
+  const mvp = mat4.multiply(proj, view);
+  gl.uniformMatrix4fv(uMvp, false, mvp);
+  gl.uniform1f(uTime, t);
+  gl.uniform1f(uWave, currentTheme.wave || 0);
+
+  const th = currentTheme;
+  gl.uniform3fv(uLow,  new Float32Array(th.low));
+  gl.uniform3fv(uMid,  new Float32Array(th.mid));
+  gl.uniform3fv(uHigh, new Float32Array(th.high));
+  gl.uniform3fv(uPeak, new Float32Array(th.peak));
+  gl.uniform3fv(uFog,  new Float32Array(th.fog));
+
+  // Bind position buffer
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, heightBuffer);
+  gl.enableVertexAttribArray(aHeight);
+  gl.vertexAttribPointer(aHeight, 1, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+  if (wireMode) {
+    // Draw wireframe using LINES
+    for (let i = 0; i < indexCount; i += 3) {
+      // Can't easily do this without OES_draw_buffers, so just use TRIANGLES with low alpha
+    }
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawElements(gl.LINES, indexCount, gl.UNSIGNED_SHORT, 0);
+  } else {
+    gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
+  }
+}
+render();
+</script>
+</body>
+</html>

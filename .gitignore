@@ -1,0 +1,10 @@
+# 内部設計資料（公開リポジトリに含めない）
+_design/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+*.swp

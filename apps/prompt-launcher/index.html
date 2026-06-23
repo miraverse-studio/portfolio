@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Prompt Launcher v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0c0c12;
+  --surf:    #14141e;
+  --surf2:   #1c1c28;
+  --border:  #28283c;
+  --accent:  #7c6ff7;
+  --accent-h:#a09af8;
+  --text:    #dddde8;
+  --dim:     #7878a0;
+  --green:   #4ade80;
+  --tag-bg:  #1e1e2e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans JP',system-ui,sans-serif;
+  padding:24px 20px 60px;max-width:860px;margin:0 auto;
+  line-height:1.6;
+}
+
+/* ── Header ── */
+.hdr{margin-bottom:28px}
+.hdr h1{font-size:1.35rem;color:var(--accent);letter-spacing:.02em;margin-bottom:4px}
+.hdr p{font-size:.8rem;color:var(--dim)}
+
+/* ── Inputs ── */
+.box{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
+.box-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin-bottom:16px;font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:580px){.grid2{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:.77rem;color:var(--dim)}
+input[type=text],textarea{
+  background:var(--bg);border:1px solid var(--border);border-radius:7px;
+  color:var(--text);font-size:.88rem;padding:9px 12px;width:100%;
+  font-family:inherit;transition:border-color .15s;
+}
+input[type=text]:focus,textarea:focus{border-color:var(--accent);outline:none}
+textarea{resize:vertical;min-height:78px}
+.row-btns{display:flex;gap:8px;margin-top:14px}
+.btn{border:none;border-radius:7px;padding:8px 18px;font-size:.83rem;cursor:pointer;font-weight:600;transition:background .15s,opacity .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-h)}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--dim);color:var(--text)}
+.save-note{font-size:.72rem;color:var(--dim);margin-top:8px;min-height:18px}
+
+/* ── Section header ── */
+.sec-hdr{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin-bottom:14px;font-weight:700}
+
+/* ── Prompt card ── */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:#383860}
+.card-top{display:flex;align-items:flex-start;gap:12px;padding:16px 18px}
+.num{min-width:30px;height:30px;background:var(--surf2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.78rem;color:var(--accent);font-weight:700;margin-top:2px}
+.meta{flex:1;min-width:0}
+.card-title{font-size:.95rem;font-weight:700;margin-bottom:3px}
+.card-desc{font-size:.78rem;color:var(--dim);margin-bottom:6px}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:.68rem;background:var(--tag-bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--dim)}
+.tag.used{border-color:#3a3a60;color:#9090c0}
+.card-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+@media(max-width:480px){.card-top{flex-wrap:wrap}.card-actions{margin-left:42px}}
+
+.btn-prev{background:transparent;color:var(--dim);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:.78rem;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-prev:hover,.btn-prev.on{border-color:var(--accent);color:var(--accent)}
+.btn-copy{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:.83rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+.btn-copy:hover{background:var(--accent-h)}
+.btn-copy:active{transform:scale(.96)}
+.btn-copy.ok{background:var(--green);color:#111}
+
+/* ── Preview ── */
+.preview{display:none;background:#0a0a10;border-top:1px solid var(--border);padding:16px 18px;font-family:'JetBrains Mono','Courier New',monospace;font-size:.75rem;line-height:1.75;color:#9090b8;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto}
+.preview.on{display:block}
+
+/* ── Copy Fallback ── */
+.fallback-area{display:none;background:#0e080e;border-top:2px solid #c0405080;padding:16px 18px}
+.fallback-area.on{display:block}
+.fallback-msg{font-size:.78rem;color:#f87171;margin-bottom:10px;line-height:1.6}
+.fallback-ta{
+  width:100%;height:200px;resize:vertical;
+  background:#0a0a10;border:1px solid #60304080;border-radius:7px;
+  color:#b0b0c0;font-family:'JetBrains Mono','Courier New',monospace;
+  font-size:.73rem;line-height:1.75;padding:12px;
+}
+.fallback-ta:focus{outline:none;border-color:#c04060}
+.fallback-close{font-size:.74rem;color:var(--dim);background:transparent;border:1px solid var(--border);border-radius:5px;padding:4px 12px;cursor:pointer;margin-top:8px;transition:border-color .15s,color .15s}
+.fallback-close:hover{border-color:var(--dim);color:var(--text)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--green);color:#111;font-weight:700;padding:10px 20px;border-radius:9px;font-size:.85rem;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateY(0)}
+
+/* ── Footer ── */
+.footer{margin-top:36px;font-size:.72rem;color:var(--dim);text-align:center}
+.footer code{background:var(--surf2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:#9090c0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Claude Prompt Launcher</h1>
+  <p>入力欄を埋めて ▼ プレビュー → 📋 コピー → Claude Code に貼るだけ &nbsp;|&nbsp; v1.0</p>
+</div>
+
+<!-- ── Inputs ── -->
+<div class="box">
+  <div class="box-title">入力欄（プロンプト内に自動差し込み）</div>
+  <div class="grid2">
+    <div class="fg">
+      <label for="i-theme">[[THEME]] 作りたいもの / テーマ</label>
+      <input type="text" id="i-theme" placeholder="例: Blender学習ログ管理ツール">
+    </div>
+    <div class="fg">
+      <label for="i-folder">[[FOLDER]] 対象プロジェクトフォルダ（フルパス）</label>
+      <input type="text" id="i-folder" placeholder="例: C:\Users\you\projects\my-app">
+    </div>
+    <div class="fg">
+      <label for="i-bug">[[BUG]] 不具合内容</label>
+      <textarea id="i-bug" placeholder="例: 削除ボタンを押しても一覧から消えない。再読み込みすると消えているので保存の問題ではなさそう"></textarea>
+    </div>
+    <div class="fg">
+      <label for="i-extra">[[EXTRA]] 追加条件（省略可）</label>
+      <textarea id="i-extra" placeholder="例: 今日は要件定義のみ。実装はしない。&#10;モバイル対応を優先してほしい"></textarea>
+    </div>
+  </div>
+  <div class="row-btns">
+    <button class="btn btn-primary" onclick="saveInputs()">保存</button>
+    <button class="btn btn-ghost" onclick="clearInputs()">クリア</button>
+  </div>
+  <div class="save-note" id="save-note"></div>
+</div>
+
+<!-- ── Prompts ── -->
+<div class="sec-hdr">プロンプト一覧</div>
+<div id="list"></div>
+
+<div class="footer">
+  v1 — 2026-06-21 &nbsp;|&nbsp;
+  localStorage キー: <code>claude-launcher-v1</code> &nbsp;|&nbsp;
+  静的HTML / 外部APIなし / 外部ライブラリなし
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ── utils ── */
+const SKEY = 'claude-launcher-v1';
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function getInputs() {
+  return {
+    theme:  document.getElementById('i-theme').value.trim(),
+    folder: document.getElementById('i-folder').value.trim(),
+    bug:    document.getElementById('i-bug').value.trim(),
+    extra:  document.getElementById('i-extra').value.trim(),
+  };
+}
+
+function saveInputs() {
+  try { localStorage.setItem(SKEY, JSON.stringify(getInputs())); } catch {}
+  document.getElementById('save-note').textContent = '保存済み ✓ ' + new Date().toLocaleTimeString('ja-JP');
+  toast('保存しました ✓');
+  refreshOpenPreviews();
+}
+
+function clearInputs() {
+  ['i-theme','i-folder','i-bug','i-extra'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  try { localStorage.removeItem(SKEY); } catch {}
+  document.getElementById('save-note').textContent = '';
+  refreshOpenPreviews();
+  toast('クリアしました');
+}
+
+function loadInputs() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SKEY) || '{}');
+    if (d.theme)  document.getElementById('i-theme').value  = d.theme;
+    if (d.folder) document.getElementById('i-folder').value = d.folder;
+    if (d.bug)    document.getElementById('i-bug').value    = d.bug;
+    if (d.extra)  document.getElementById('i-extra').value  = d.extra;
+    if (d.theme || d.folder || d.bug || d.extra) {
+      document.getElementById('save-note').textContent = 'ローカル保存データを復元しました';
+    }
+  } catch {}
+}
+
+/* ── prompt builder ── */
+function buildPrompt(id) {
+  const p = PROMPTS.find(x => x.id === id);
+  if (!p) return '';
+  const inp = getInputs();
+  const ph = { THEME:'（作りたいもの を入力）', FOLDER:'（プロジェクトフォルダ を入力）', BUG:'（不具合内容 を入力）' };
+  const extra = inp.extra ? '\n' + inp.extra : '';
+  return p.tpl
+    .replace(/\[\[THEME\]\]/g,  inp.theme  || ph.THEME)
+    .replace(/\[\[FOLDER\]\]/g, inp.folder || ph.FOLDER)
+    .replace(/\[\[BUG\]\]/g,    inp.bug    || ph.BUG)
+    .replace(/\[\[EXTRA\]\]/g,  extra);
+}
+
+/* ── preview ── */
+function togglePreview(id) {
+  const area = document.getElementById('pv-' + id);
+  const btn  = document.getElementById('pvb-' + id);
+  if (area.classList.contains('on')) {
+    area.classList.remove('on');
+    btn.classList.remove('on');
+    btn.textContent = 'プレビュー ▼';
+  } else {
+    area.textContent = buildPrompt(id);
+    area.classList.add('on');
+    btn.classList.add('on');
+    btn.textContent = 'プレビュー ▲';
+  }
+}
+
+function refreshOpenPreviews() {
+  document.querySelectorAll('.preview.on').forEach(el => {
+    el.textContent = buildPrompt(el.id.slice(3)); // 'pv-' prefix
+  });
+}
+
+/* ── copy ── */
+// コピー処理: 1) Clipboard API → 2) execCommand → 3) textarea手動コピーUI の3段階
+// バックスラッシュはJS文字列として正しく保持されるためコピー時も壊れない
+const copyTimers = {};
+
+function copyPrompt(id) {
+  const text = buildPrompt(id);
+  const btn  = document.getElementById('cpb-' + id);
+
+  function onSuccess() {
+    btn.textContent = 'コピー済 ✓';
+    btn.classList.add('ok');
+    // コピー成功時はフォールバックUIを閉じる
+    const fb = document.getElementById('fb-' + id);
+    if (fb) fb.classList.remove('on');
+    clearTimeout(copyTimers[id]);
+    copyTimers[id] = setTimeout(() => {
+      btn.textContent = '📋 コピー';
+      btn.classList.remove('ok');
+    }, 2400);
+    toast('クリップボードにコピーしました ✓');
+  }
+
+  function onFail() {
+    // 両方失敗 → textarea展開で手動コピーを促す
+    showCopyFallback(id, text);
+  }
+
+  if (navigator.clipboard) {
+    // 段階1: Clipboard API（HTTPS / localhost で動作）
+    navigator.clipboard.writeText(text)
+      .then(onSuccess)
+      .catch(() => {
+        // 段階2: execCommand fallback（file:// や一部ブラウザ向け）
+        if (execCommandCopy(text)) { onSuccess(); }
+        else { onFail(); }
+      });
+  } else {
+    // 段階2: Clipboard API 未対応ブラウザ
+    if (execCommandCopy(text)) { onSuccess(); }
+    else { onFail(); }
+  }
+}
+
+// execCommand によるコピー試行（成功: true / 失敗: false）
+function execCommandCopy(text) {
+  const el = document.createElement('textarea');
+  el.value = text; // バックスラッシュはそのまま保持される
+  el.style.cssText = 'position:fixed;opacity:0;top:0;left:0;pointer-events:none';
+  document.body.appendChild(el);
+  el.select();
+  let ok = false;
+  try { ok = !!document.execCommand('copy'); } catch {}
+  document.body.removeChild(el);
+  return ok;
+}
+
+// 段階3: コピー失敗時のフォールバック — textarea を展開して手動コピーを促す
+function showCopyFallback(id, text) {
+  const area = document.getElementById('fb-' + id);
+  const ta   = document.getElementById('fbt-' + id);
+  if (!area || !ta) return;
+  ta.value = text;
+  area.classList.add('on');
+  // フォーカスして全選択（Ctrl+C できる状態にする）
+  ta.focus();
+  ta.select();
+  toast('コピーに失敗しました。下のテキストを手動でコピーしてください ⚠');
+}
+
+function closeFallback(id) {
+  const area = document.getElementById('fb-' + id);
+  if (area) area.classList.remove('on');
+}
+
+/* ── toast ── */
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ── prompt definitions ── */
+const BASE = 'C:\\Users\\you\\projects\\';
+
+const PROMPTS = [
+  {
+    id: 'new-project',
+    title: '新規制作開始',
+    desc: '起動パック5ファイルを読ませて要件定義から開始する',
+    vars: ['THEME','EXTRA'],
+    tpl:
+`以下のファイルを読んで、制作の前提を把握してください。
+
+読んでほしいファイル（この順番で）:
+1. ${BASE}01_SOURCE_OF_TRUTH.md
+2. ${BASE}02_CURRENT_LEVEL.md
+3. ${BASE}03_WORKFLOW_RULES.md
+4. ${BASE}04_QUALITY_BAR.md
+5. ${BASE}05_SECURITY_RULES.md
+
+読み終わったら、以下の新規アプリの要件定義（Step 1）を始めてください。
+
+作りたいもの: [[THEME]]
+
+今日やること: 要件定義のみ（実装はまだしない）
+保存先: C:\\Users\\you\\projects\\[新規フォルダ名を提案してください]\\
+
+制約:
+- 静的HTMLのみ（外部ライブラリなし）
+- 外部APIなし
+- 個人情報なし（本名・Gmail・電話番号を含めない）
+- 推測で機能を追加しない
+- 実装はまだしない[[EXTRA]]`
+  },
+  {
+    id: 'continue-project',
+    title: '既存プロジェクト継続',
+    desc: 'FINAL_DELIVERY.md を読んで前回の続きから再開する',
+    vars: ['FOLDER','EXTRA'],
+    tpl:
+`以下のファイルを読んで、前回の状態を把握してください。
+
+読んでほしいファイル（この順番で）:
+1. [[FOLDER]]\\FINAL_DELIVERY.md
+2. ${BASE}03_WORKFLOW_RULES.md
+3. ${BASE}09_DO_NOT_REPEAT.md
+
+読み終わったら以下を報告してください:
+- 前回どこまで進んでいたか（FINAL_DELIVERY.md から判断）
+- 今日やるべき次のステップ（03_WORKFLOW_RULES.md の工程で何番目か）
+- 懸念点・リスク
+
+注意:
+- 新機能の追加はしない（修正または継続のみ）
+- 変更するファイル・関数を先に報告してから実装する
+- 推測で「完了」と書かない
+- ブラウザ確認できていないものを「確認済み」と書かない[[EXTRA]]`
+  },
+  {
+    id: 'bug-fix',
+    title: 'バグ修正',
+    desc: '最小限の変更で不具合を直す（実装前に影響範囲を必ず報告させる）',
+    vars: ['FOLDER','BUG','EXTRA'],
+    tpl:
+`以下のファイルを読んでバグ修正の前提を把握してください。
+
+読んでほしいファイル:
+1. ${BASE}05_SECURITY_RULES.md
+2. ${BASE}09_DO_NOT_REPEAT.md
+3. [[FOLDER]]（対象ファイル群）
+
+問題の説明:
+[[BUG]]
+
+修正方針:
+- 変更は最小限（1関数のみを原則）
+- 既存テストが壊れる変更はしない
+- 新機能の追加はしない
+
+修正前に以下を教えてください:
+1. 問題の原因（どの関数・どの処理で起きているか）
+2. 変更する箇所（ファイル名・関数名・行番号）
+3. 影響を受ける可能性がある他の箇所
+4. 確認方法（何をどうテストするか）
+
+「OK」と返信してから実装を開始してください。[[EXTRA]]`
+  },
+  {
+    id: 'senior-review',
+    title: 'シニアエンジニアレビュー',
+    desc: 'プロ視点で「次に直すべき順番」を指摘させる（実装なし）',
+    vars: ['FOLDER','EXTRA'],
+    tpl:
+`以下のプロジェクトをシニアエンジニアの視点でレビューしてください。
+
+対象: [[FOLDER]]
+
+参考ファイル:
+${BASE}06_REVIEW_CRITERIA.md
+
+レビュー観点（全て確認してください）:
+1. 設計・アーキテクチャ
+2. コード品質・保守性
+3. テスト（ユニット・手動）
+4. セキュリティ（XSS・機密情報・外部通信）
+5. UI/UX（フィードバック・レスポンシブ・アクセシビリティ）
+6. ドキュメント（README・FINAL_DELIVERY・SECURITY_REVIEW）
+7. ポートフォリオ性（説明できるか・GitHub公開できるか）
+
+報告形式:
+- 「次に直すべき順番」でリストアップ（点数不要）
+- 各指摘: なぜ問題か / どう直すか / 難易度（小/中/大）
+- 良い点も必ず3つ以上書く
+- 初心者向けに優しくしなくていい。正直に書いてください
+
+今回は実装しないでください。指摘リストだけ出してください。[[EXTRA]]`
+  },
+  {
+    id: 'manual-test',
+    title: '手動テストチェックリスト作成',
+    desc: 'MANUAL_TEST_CHECKLIST.md を生成する（実装なし・確認項目の列挙のみ）',
+    vars: ['THEME','FOLDER','EXTRA'],
+    tpl:
+`以下のアプリの MANUAL_TEST_CHECKLIST.md を作成してください。
+
+対象アプリ: [[THEME]]
+プロジェクト: [[FOLDER]]
+
+各テストケースに必ず含めること:
+- 操作手順（番号付きステップ）
+- 期待結果（チェックボックス形式）
+- OK/NG 記入欄
+- 問題が出た時に見るべき箇所（関数名・行番号）
+
+その他:
+- 冒頭に localStorage 初期化手順を含める（DevTools操作とConsoleコマンドの両方）
+- 正常系・異常系・境界値を含める
+- 新規実装は追加しない。確認項目の列挙のみ
+- 保存先: [[FOLDER]]\\MANUAL_TEST_CHECKLIST.md[[EXTRA]]`
+  },
+  {
+    id: 'final-delivery',
+    title: 'FINAL_DELIVERY.md 作成・更新',
+    desc: '完成品サマリー・弱点・修正履歴を整備する',
+    vars: ['FOLDER','EXTRA'],
+    tpl:
+`以下のプロジェクトの FINAL_DELIVERY.md を作成してください。
+
+プロジェクト: [[FOLDER]]
+
+含めるべき内容（この順番で）:
+1. 完成品一覧（ファイル名・種別・内容・行数）
+2. 保存先パス
+3. 使い方（最短手順・3ステップ以内）
+4. 技術構成テーブル
+5. テスト結果（TEST_RUNNER.html の件数・PASS/FAIL）
+6. セキュリティ確認結果テーブル
+7. まだ弱い点（正直に・盛らない）
+8. 今後改善すべき点（優先順）
+9. 修正履歴テーブル（日付・内容・ファイル名）
+
+注意:
+- ブラウザ確認できていないものは「未確認（要手動テスト）」と明記
+- 推測で完成状況を盛らない
+- 個人情報（本名・Gmail）を含めない
+- 保存先: [[FOLDER]]\\FINAL_DELIVERY.md[[EXTRA]]`
+  },
+  {
+    id: 'today-summary',
+    title: 'TODAY_MASTER_SUMMARY.md 作成',
+    desc: '今日の全作業を横断整理して翌日の引き継ぎ書を作る',
+    vars: ['THEME','EXTRA'],
+    tpl:
+`今日の全作業を横断して TODAY_MASTER_SUMMARY.md を作成してください。
+
+保存先: C:\\Users\\you\\projects\\TODAY_MASTER_SUMMARY.md
+
+今日の作業内容:
+[[THEME]]
+
+含めるべき内容:
+1. 今日作ったもの一覧（ファイル名・保存先・完成/未確認の状態）
+2. 完成扱いのもの（根拠付き）
+3. 未テスト・未確認のもの（正直に）
+4. 後でPCで確認するもの（優先順）
+5. 次回セッションで最初に読むべきファイル
+6. 次回やるべき順番（優先度付き）
+7. 今日得た学び（技術的・プロセス的）
+8. 後でやるリスト
+9. 次回最初に貼るプロンプト（コピペ可能な形で）
+
+注意:
+- 推測で実績を盛らない
+- 未確認のものは「未確認」と明記
+- 「完了」と書くのはブラウザ確認後のみ[[EXTRA]]`
+  },
+];
+
+/* ── render ── */
+function render() {
+  const ALL_VARS = {
+    THEME:  '作りたいもの',
+    FOLDER: 'フォルダ',
+    BUG:    '不具合',
+    EXTRA:  '追加条件',
+  };
+
+  document.getElementById('list').innerHTML = PROMPTS.map((p, i) => {
+    const tags = Object.keys(ALL_VARS).map(v => {
+      const used = p.vars.includes(v);
+      return `<span class="tag${used?' used':''}">${escHtml('[['+ALL_VARS[v]+']]')}</span>`;
+    }).join('');
+
+    const sid = escHtml(p.id);
+    return `
+<div class="card">
+  <div class="card-top">
+    <div class="num">${i+1}</div>
+    <div class="meta">
+      <div class="card-title">${escHtml(p.title)}</div>
+      <div class="card-desc">${escHtml(p.desc)}</div>
+      <div class="tags">${tags}</div>
+    </div>
+    <div class="card-actions">
+      <button class="btn-prev" id="pvb-${sid}" onclick="togglePreview('${sid}')">プレビュー ▼</button>
+      <button class="btn-copy btn" id="cpb-${sid}" onclick="copyPrompt('${sid}')">📋 コピー</button>
+    </div>
+  </div>
+  <div class="preview" id="pv-${sid}"></div>
+  <div class="fallback-area" id="fb-${sid}">
+    <p class="fallback-msg">⚠ クリップボードへのコピーに失敗しました。<br>下のテキストを全選択（Ctrl+A）してコピー（Ctrl+C）してください。</p>
+    <textarea class="fallback-ta" id="fbt-${sid}" readonly></textarea>
+    <br><button class="fallback-close" onclick="closeFallback('${sid}')">閉じる</button>
+  </div>
+</div>`;
+  }).join('');
+}
+
+/* ── auto-refresh open previews on input ── */
+['i-theme','i-folder','i-bug','i-extra'].forEach(id => {
+  document.getElementById(id).addEventListener('input', refreshOpenPreviews);
+});
+
+/* ── init ── */
+render();
+loadInputs();
+</script>
+</body>
+</html>

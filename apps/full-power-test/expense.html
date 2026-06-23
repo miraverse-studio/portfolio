@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>経費管理 | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+:root {
+  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
+  --text:#e2e8f0; --muted:#94a3b8; --red:#ef4444; --green:#10b981;
+}
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; padding-bottom:40px; }
+
+.nav { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--b1); }
+.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-t { font-size:14px; font-weight:900; flex:1; }
+.msel { padding:6px 10px; border-radius:16px; font-size:11px; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-family:'JetBrains Mono',monospace; cursor:pointer; outline:none; }
+
+/* BALANCE */
+.balance-card { margin:16px; background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(245,158,11,0.06)); border:1px solid rgba(124,58,237,0.2); border-radius:16px; padding:20px; }
+.bal-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+.bal-label { font-size:11px; color:var(--muted); letter-spacing:0.15em; margin-bottom:4px; }
+.bal-amount { font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#a78bfa; }
+.bal-budget { font-size:12px; color:var(--muted); }
+.bal-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.bal-item { background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; }
+.bal-item-label { font-size:10px; color:var(--muted); margin-bottom:4px; }
+.bal-item-val { font-size:16px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.meter { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; margin-top:8px; }
+.meter-fill { height:100%; border-radius:3px; transition:width 0.5s ease; }
+
+/* ADD FORM */
+.add-form { margin:0 16px 16px; background:var(--s1); border:1px solid var(--b1); border-radius:14px; padding:14px; }
+.form-title { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:12px; letter-spacing:0.1em; }
+.form-row { display:flex; gap:8px; margin-bottom:8px; }
+.f-input { flex:1; padding:9px 12px; background:rgba(0,0,0,0.3); border:1px solid var(--b1); border-radius:10px; color:var(--text); font-size:12px; font-family:inherit; outline:none; }
+.f-input:focus { border-color:rgba(124,58,237,0.4); }
+.f-sel { padding:9px 10px; border-radius:10px; font-size:11px; border:1px solid var(--b1); background:rgba(0,0,0,0.3); color:var(--text); font-family:inherit; outline:none; cursor:pointer; }
+.f-sel:focus { border-color:rgba(124,58,237,0.4); }
+.add-btn { padding:9px 18px; border-radius:10px; background:#7c3aed; border:none; color:#fff; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.type-toggle { display:flex; gap:6px; }
+.type-btn { flex:1; padding:8px; border-radius:8px; font-size:11px; cursor:pointer; font-family:inherit; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-weight:700; }
+.type-btn.expense.active { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.4); color:#f87171; }
+.type-btn.income.active { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.4); color:#34d399; }
+
+/* PIE CHART */
+.chart-wrap { margin:0 16px 16px; background:var(--s1); border:1px solid var(--b1); border-radius:14px; padding:14px; }
+.chart-row { display:flex; align-items:center; gap:16px; }
+svg#pie { flex-shrink:0; }
+.pie-legend { display:flex; flex-direction:column; gap:6px; flex:1; }
+.ple { display:flex; align-items:center; gap:8px; font-size:11px; }
+.ple-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.ple-name { flex:1; }
+.ple-val { font-family:'JetBrains Mono',monospace; color:var(--muted); }
+
+/* LIST */
+.list-section { padding:0 16px; }
+.list-title { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:0.15em; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+.clear-btn { font-size:10px; padding:3px 10px; border-radius:10px; cursor:pointer; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); color:#f87171; }
+.tx-list { display:flex; flex-direction:column; gap:6px; }
+.tx {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:var(--s1); border:1px solid var(--b1); border-radius:10px;
+}
+.tx-cat { font-size:18px; }
+.tx-body { flex:1; }
+.tx-name { font-size:12px; font-weight:700; }
+.tx-date { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.tx-amount { font-size:13px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.tx-del { color:rgba(239,68,68,0.3); cursor:pointer; padding:4px 6px; font-size:13px; }
+.tx-del:hover { color:#f87171; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="nav-t">💰 経費管理</div>
+  <select class="msel" id="monthSel" onchange="changeMonth()"></select>
+</div>
+
+<div class="balance-card">
+  <div class="bal-top">
+    <div>
+      <div class="bal-label">当月 残高</div>
+      <div class="bal-amount" id="balAmt">¥0</div>
+      <div class="bal-budget" id="balBudget">予算：¥0</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="bal-label">予算設定</div>
+      <input type="number" id="budgetInput" style="width:100px;padding:4px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#a78bfa;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;text-align:right;" placeholder="100000" onchange="updateBudget()">
+    </div>
+  </div>
+  <div class="bal-grid">
+    <div class="bal-item">
+      <div class="bal-item-label">収入合計</div>
+      <div class="bal-item-val" id="incomeTotal" style="color:#34d399;">¥0</div>
+      <div class="meter"><div class="meter-fill" id="incomeMeter" style="width:0%;background:#10b981;"></div></div>
+    </div>
+    <div class="bal-item">
+      <div class="bal-item-label">支出合計</div>
+      <div class="bal-item-val" id="expenseTotal" style="color:#f87171;">¥0</div>
+      <div class="meter"><div class="meter-fill" id="expenseMeter" style="width:0%;background:#ef4444;"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="add-form">
+  <div class="form-title">取引を追加</div>
+  <div class="type-toggle" style="margin-bottom:10px;">
+    <button class="type-btn expense active" id="typeExpense" onclick="setType('expense')">− 支出</button>
+    <button class="type-btn income" id="typeIncome" onclick="setType('income')">+ 収入</button>
+  </div>
+  <div class="form-row">
+    <input type="text" class="f-input" id="txName" placeholder="内容（例：Meshy Proプラン）" maxlength="40">
+    <input type="number" class="f-input" id="txAmt" placeholder="金額" style="width:110px;flex:none;" min="0">
+  </div>
+  <div class="form-row">
+    <select class="f-sel" id="txCat" style="flex:1;">
+      <option value="🤖 AI/ツール費">🤖 AI/ツール費</option>
+      <option value="🎬 制作費">🎬 制作費</option>
+      <option value="☁️ クラウド">☁️ クラウド</option>
+      <option value="📚 学習費">📚 学習費</option>
+      <option value="🏢 オフィス">🏢 オフィス</option>
+      <option value="📱 通信費">📱 通信費</option>
+      <option value="💼 受託収入">💼 受託収入</option>
+      <option value="🎨 制作収入">🎨 制作収入</option>
+      <option value="📦 その他">📦 その他</option>
+    </select>
+    <input type="date" class="f-sel" id="txDate" style="font-family:'JetBrains Mono',monospace;font-size:11px;">
+    <button class="add-btn" onclick="addTx()">追加</button>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <div style="font-size:12px;font-weight:700;margin-bottom:10px;">カテゴリ内訳</div>
+  <div class="chart-row">
+    <svg id="pie" width="100" height="100" viewBox="0 0 100 100"></svg>
+    <div class="pie-legend" id="legend"></div>
+  </div>
+</div>
+
+<div class="list-section">
+  <div class="list-title">
+    <span>取引履歴</span>
+    <button class="clear-btn" onclick="clearMonth()">当月クリア</button>
+  </div>
+  <div class="tx-list" id="txList"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'mira-expense-v1';
+const CAT_COLORS = {
+  '🤖 AI/ツール費':'#7c3aed','🎬 制作費':'#ec4899','☁️ クラウド':'#3b82f6',
+  '📚 学習費':'#f59e0b','🏢 オフィス':'#10b981','📱 通信費':'#06b6d4',
+  '💼 受託収入':'#34d399','🎨 制作収入':'#a78bfa','📦 その他':'#94a3b8'
+};
+
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+// data[YYYY-MM] = { budget:N, txs:[{id,name,cat,amount,type,date}] }
+let currentMonth = new Date().toISOString().slice(0,7);
+let txType = 'expense';
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function getM() {
+  if (!data[currentMonth]) data[currentMonth] = { budget:100000, txs:[] };
+  return data[currentMonth];
+}
+
+// Seed sample data
+if (Object.keys(data).length === 0) {
+  data['2026-06'] = { budget:150000, txs:[
+    {id:1,name:'Meshy Pro月額',cat:'🤖 AI/ツール費',amount:4980,type:'expense',date:'2026-06-01'},
+    {id:2,name:'Claude Pro',cat:'🤖 AI/ツール費',amount:2700,type:'expense',date:'2026-06-01'},
+    {id:3,name:'Blender素材購入',cat:'🎬 制作費',amount:3300,type:'expense',date:'2026-06-05'},
+    {id:4,name:'iCloud 50GB',cat:'☁️ クラウド',amount:130,type:'expense',date:'2026-06-05'},
+    {id:5,name:'Udemy Blenderコース',cat:'📚 学習費',amount:1980,type:'expense',date:'2026-06-10'},
+    {id:6,name:'3Dモデル制作受注',cat:'🎨 制作収入',amount:30000,type:'income',date:'2026-06-15'},
+    {id:7,name:'コンサル報酬',cat:'💼 受託収入',amount:20000,type:'income',date:'2026-06-18'},
+    {id:8,name:'YouTube収益',cat:'🎨 制作収入',amount:2500,type:'income',date:'2026-06-20'},
+  ]};
+  save();
+}
+
+// ─── Month selector ───────────────────────────────────────────────────────────
+function buildMonthSel() {
+  const sel = document.getElementById('monthSel');
+  const months = [];
+  const now = new Date();
+  for (let i = -5; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(d.toISOString().slice(0,7));
+  }
+  sel.innerHTML = months.map(m =>
+    `<option value="${m}" ${m===currentMonth?'selected':''}>${m}</option>`
+  ).join('');
+}
+function changeMonth() {
+  currentMonth = document.getElementById('monthSel').value;
+  document.getElementById('budgetInput').value = getM().budget || '';
+  render();
+}
+window.changeMonth = changeMonth;
+
+// ─── Type toggle ──────────────────────────────────────────────────────────────
+function setType(t) {
+  txType = t;
+  document.getElementById('typeExpense').className = 'type-btn expense' + (t==='expense'?' active':'');
+  document.getElementById('typeIncome').className  = 'type-btn income'  + (t==='income' ?' active':'');
+}
+window.setType = setType;
+
+// ─── Add transaction ──────────────────────────────────────────────────────────
+function addTx() {
+  const name = document.getElementById('txName').value.trim();
+  const amt = parseFloat(document.getElementById('txAmt').value);
+  const cat = document.getElementById('txCat').value;
+  const date = document.getElementById('txDate').value || currentMonth + '-01';
+  if (!name || isNaN(amt) || amt <= 0) { alert('内容と金額を入力してください'); return; }
+  const m = getM();
+  m.txs.unshift({ id:Date.now(), name, cat, amount:amt, type:txType, date });
+  save(); render();
+  document.getElementById('txName').value = '';
+  document.getElementById('txAmt').value = '';
+}
+window.addTx = addTx;
+
+function deleteTx(id) {
+  const m = getM();
+  m.txs = m.txs.filter(t => t.id !== id);
+  save(); render();
+}
+window.deleteTx = deleteTx;
+
+function clearMonth() {
+  if (!confirm('この月の全データを削除しますか？')) return;
+  data[currentMonth] = { budget: getM().budget, txs:[] };
+  save(); render();
+}
+window.clearMonth = clearMonth;
+
+function updateBudget() {
+  const b = parseInt(document.getElementById('budgetInput').value) || 0;
+  getM().budget = b;
+  save(); render();
+}
+window.updateBudget = updateBudget;
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const m = getM();
+  const income = m.txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = m.txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal = income - expense;
+  const budget = m.budget || 0;
+
+  document.getElementById('balAmt').textContent = '¥' + Math.abs(bal).toLocaleString();
+  document.getElementById('balAmt').style.color = bal >= 0 ? '#34d399' : '#f87171';
+  document.getElementById('balBudget').textContent = `予算：¥${budget.toLocaleString()}`;
+  document.getElementById('incomeTotal').textContent = '¥' + income.toLocaleString();
+  document.getElementById('expenseTotal').textContent = '¥' + expense.toLocaleString();
+  document.getElementById('budgetInput').value = budget || '';
+
+  // Meters (relative to budget or max)
+  const maxVal = Math.max(income, expense, budget, 1);
+  document.getElementById('incomeMeter').style.width = (income/maxVal*100).toFixed(0) + '%';
+  const expPct = Math.min(income > 0 ? expense/income*100 : 100, 100);
+  document.getElementById('expenseMeter').style.width = expPct.toFixed(0) + '%';
+  document.getElementById('expenseMeter').style.background = expPct > 80 ? '#ef4444' : '#f59e0b';
+
+  // Pie chart
+  const catMap = {};
+  m.txs.filter(t=>t.type==='expense').forEach(t => { catMap[t.cat] = (catMap[t.cat]||0)+t.amount; });
+  renderPie(catMap, expense);
+
+  // List
+  const listEl = document.getElementById('txList');
+  if (m.txs.length === 0) { listEl.innerHTML = '<div style="font-size:11px;color:rgba(148,163,184,0.3);padding:12px 0;">取引なし</div>'; return; }
+  listEl.innerHTML = m.txs.map(t => `
+    <div class="tx">
+      <div class="tx-cat">${t.cat.split(' ')[0]}</div>
+      <div class="tx-body">
+        <div class="tx-name">${escHtml(t.name)}</div>
+        <div class="tx-date">${t.date} · ${t.cat}</div>
+      </div>
+      <div class="tx-amount" style="color:${t.type==='income'?'#34d399':'#f87171'};">
+        ${t.type==='income'?'+':'−'}¥${t.amount.toLocaleString()}
+      </div>
+      <span class="tx-del" onclick="deleteTx(${t.id})">✕</span>
+    </div>`).join('');
+}
+
+function renderPie(catMap, total) {
+  const svg = document.getElementById('pie');
+  svg.innerHTML = '';
+  const legend = document.getElementById('legend');
+  const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  if (cats.length === 0 || total === 0) {
+    svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+    legend.innerHTML = '<div style="font-size:11px;color:rgba(148,163,184,0.3);">支出なし</div>';
+    return;
+  }
+
+  let startAngle = -Math.PI / 2;
+  const cx = 50, cy = 50, r = 40, ir = 22;
+  cats.forEach(([cat, val]) => {
+    const angle = (val / total) * Math.PI * 2;
+    const endAngle = startAngle + angle;
+    const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + ir * Math.cos(startAngle), iy1 = cy + ir * Math.sin(startAngle);
+    const ix2 = cx + ir * Math.cos(endAngle),   iy2 = cy + ir * Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    const color = CAT_COLORS[cat] || '#94a3b8';
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${ix1.toFixed(1)},${iy1.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${ix2.toFixed(1)},${iy2.toFixed(1)} A${ir},${ir} 0 ${large},0 ${ix1.toFixed(1)},${iy1.toFixed(1)} Z`);
+    path.setAttribute('fill', color);
+    path.setAttribute('opacity','0.85');
+    svg.appendChild(path);
+    startAngle = endAngle;
+  });
+
+  legend.innerHTML = cats.slice(0,5).map(([cat,val]) =>
+    `<div class="ple">
+      <div class="ple-dot" style="background:${CAT_COLORS[cat]||'#94a3b8'};"></div>
+      <div class="ple-name">${cat}</div>
+      <div class="ple-val">¥${val.toLocaleString()}</div>
+    </div>`
+  ).join('');
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildMonthSel();
+document.getElementById('txDate').value = new Date().toISOString().slice(0,10);
+document.getElementById('budgetInput').value = getM().budget || '';
+render();
+</script>
+</body>
+</html>

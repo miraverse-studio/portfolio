@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>オフィスアンビエント | Mira</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #07070f;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.07);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #7c3aed;
+  --teal: #14b8a6;
+  --gold: #f59e0b;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
+}
+
+/* ─── Header ─── */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+  width: 100%;
+  max-width: 420px;
+}
+.back {
+  display: inline-block;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+  margin-bottom: 20px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.back:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--teal);
+  margin-bottom: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.title {
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 900;
+  background: linear-gradient(135deg, #2dd4bf, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.subtitle { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ─── Visualizer ─── */
+.viz-wrap {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 24px;
+  position: relative;
+}
+canvas#viz {
+  width: 100%;
+  height: 100px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  display: block;
+}
+.viz-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.viz-overlay.hidden { opacity: 0; }
+
+/* ─── Big Play Button ─── */
+.play-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(20,184,166,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.play-ring::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: rgba(20,184,166,0.08);
+  border: 1px solid rgba(20,184,166,0.2);
+  transition: all 0.3s;
+}
+.play-ring.playing {
+  border-color: rgba(20,184,166,0.7);
+  box-shadow: 0 0 30px rgba(20,184,166,0.15), 0 0 60px rgba(20,184,166,0.06);
+}
+.play-ring.playing::before {
+  background: rgba(20,184,166,0.12);
+  border-color: rgba(20,184,166,0.4);
+}
+.play-ring:active { transform: scale(0.96); }
+.play-icon { font-size: 36px; z-index: 1; transition: all 0.2s; }
+.pulse-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(20,184,166,0.3);
+  animation: pulseRing 2s ease-out infinite;
+  opacity: 0;
+  pointer-events: none;
+}
+.pulse-ring:nth-child(2) { animation-delay: 0.7s; }
+.pulse-ring:nth-child(3) { animation-delay: 1.4s; }
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ─── Controls ─── */
+.controls {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ctrl {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.ctrl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.ctrl-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ctrl-icon { font-size: 18px; }
+.ctrl-vol {
+  font-size: 11px;
+  color: var(--teal);
+  font-family: 'JetBrains Mono', monospace;
+}
+.toggle {
+  width: 36px;
+  height: 20px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--teal); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(16px); }
+.slider-wrap { display: flex; align-items: center; gap: 10px; }
+.slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  outline: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--teal);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(20,184,166,0.4);
+}
+.slider-label { font-size: 10px; color: var(--muted); width: 28px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Scene Presets ─── */
+.presets {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+.preset-title { font-size: 11px; color: var(--muted); margin-bottom: 10px; letter-spacing: 0.1em; }
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.preset-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.preset-btn.active {
+  background: rgba(20,184,166,0.15);
+  border-color: rgba(20,184,166,0.4);
+  color: #2dd4bf;
+}
+.preset-btn:hover { border-color: rgba(20,184,166,0.3); color: var(--text); }
+
+/* ─── Tech Note ─── */
+.tech-note {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: rgba(124,58,237,0.06);
+  border: 1px solid rgba(124,58,237,0.15);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.tech-note strong { color: #a78bfa; }
+
+/* ─── Activity Feed ─── */
+.activity {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 16px;
+}
+.activity-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.1em; }
+.activity-log {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.8;
+  height: 88px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse;
+}
+.log-line { color: #94a3b8; }
+.log-line .ts { color: #475569; margin-right: 8px; }
+.log-line .evt { color: #2dd4bf; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" class="back">← ホーム</a>
+  <div class="eyebrow">WEB AUDIO API · PROCEDURAL SOUND</div>
+  <div class="title">オフィス<br>アンビエントサウンド</div>
+  <div class="subtitle">音源ファイルなし。OscillatorNode + BiquadFilterNode + GainNode<br>だけでオフィスの空気感を生成します。</div>
+</div>
+
+<div class="viz-wrap">
+  <canvas id="viz" width="840" height="200"></canvas>
+  <div class="viz-overlay" id="vizOverlay">再生ボタンを押してスタート</div>
+</div>
+
+<div class="play-ring" id="playBtn" onclick="togglePlay()">
+  <div class="pulse-ring"></div>
+  <div class="pulse-ring"></div>
+  <div class="pulse-ring"></div>
+  <div class="play-icon" id="playIcon">▶</div>
+</div>
+
+<div class="presets" style="max-width:420px;width:100%;">
+  <div class="preset-title">SCENE PRESET</div>
+  <div class="preset-row">
+    <button class="preset-btn active" onclick="setPreset('morning')">🌅 朝の出社</button>
+    <button class="preset-btn" onclick="setPreset('focus')">🎯 集中タイム</button>
+    <button class="preset-btn" onclick="setPreset('meeting')">💼 ミーティング</button>
+    <button class="preset-btn" onclick="setPreset('night')">🌙 夜の残業</button>
+  </div>
+</div>
+
+<div class="controls" id="controls">
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">💨</span> エアコン / 空調</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-hvac">60%</span>
+        <button class="toggle on" id="tog-hvac" onclick="toggleTrack('hvac')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-hvac" min="0" max="100" value="60"
+             oninput="setVolume('hvac', this.value)">
+      <span class="slider-label" id="lbl-hvac">60</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">⌨️</span> キーボード入力</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-keys">45%</span>
+        <button class="toggle on" id="tog-keys" onclick="toggleTrack('keys')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-keys" min="0" max="100" value="45"
+             oninput="setVolume('keys', this.value)">
+      <span class="slider-label" id="lbl-keys">45</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">☕</span> コーヒーメーカー</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-coffee">30%</span>
+        <button class="toggle on" id="tog-coffee" onclick="toggleTrack('coffee')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-coffee" min="0" max="100" value="30"
+             oninput="setVolume('coffee', this.value)">
+      <span class="slider-label" id="lbl-coffee">30</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">🎵</span> Lo-Fi ドローン</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-drone">40%</span>
+        <button class="toggle on" id="tog-drone" onclick="toggleTrack('drone')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-drone" min="0" max="100" value="40"
+             oninput="setVolume('drone', this.value)">
+      <span class="slider-label" id="lbl-drone">40</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">💬</span> 遠くの会話 (ブラウンノイズ)</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-voices">25%</span>
+        <button class="toggle on" id="tog-voices" onclick="toggleTrack('voices')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-voices" min="0" max="100" value="25"
+             oninput="setVolume('voices', this.value)">
+      <span class="slider-label" id="lbl-voices">25</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-header">
+      <div class="ctrl-name"><span class="ctrl-icon">📠</span> プリンター / コピー機</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ctrl-vol" id="vol-printer">0%</span>
+        <button class="toggle" id="tog-printer" onclick="toggleTrack('printer')"></button>
+      </div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="slider" id="sl-printer" min="0" max="100" value="0"
+             oninput="setVolume('printer', this.value)">
+      <span class="slider-label" id="lbl-printer">0</span>
+    </div>
+  </div>
+</div>
+
+<div class="tech-note">
+  <strong>技術メモ</strong>：音源ファイルは1バイトも使っていません。<br>
+  • <strong>HVAC</strong>：AudioWorklet不使用。BiquadFilter(lowpass 200Hz)に通したWhite Noiseで空調の「サー」を再現<br>
+  • <strong>キーボード</strong>：ScriptProcessorNode後継のAudioWorkletでランダムに短いバースト生成<br>
+  • <strong>ドローン</strong>：3つのOscillator(基音+5度+9度)をDetuneしてビートを作りつつGainでAM変調<br>
+  • <strong>ブラウンノイズ</strong>：White NoiseをIIRフィルタで積分（1/f² スペクトル）して生成<br>
+  • <strong>ビジュアライザ</strong>：AnalyserNode → getByteTimeDomainData() → Canvas 2D 波形描画
+</div>
+
+<div class="activity">
+  <div class="activity-title">SOUND ENGINE LOG</div>
+  <div class="activity-log" id="logEl">
+    <div class="log-line"><span class="ts">--:--:--</span><span class="evt">waiting</span> エンジン起動待ち</div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let ctx = null;        // AudioContext
+let analyser = null;
+let master = null;     // master GainNode
+let playing = false;
+let rafId = null;
+
+const tracks = {};     // { id: { gain, enabled, nodes:[] } }
+
+// ─── Log helper ──────────────────────────────────────────────────────────────
+function log(msg, cls = '') {
+  const el = document.getElementById('logEl');
+  const t = new Date();
+  const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  const line = document.createElement('div');
+  line.className = 'log-line' + (cls ? ' ' + cls : '');
+  line.innerHTML = `<span class="ts">${ts}</span>${msg}`;
+  el.prepend(line);
+  while (el.children.length > 20) el.removeChild(el.lastChild);
+}
+
+// ─── White Noise Buffer (Brown noise source) ──────────────────────────────────
+function createNoiseBuffer(ctx, seconds = 4) {
+  const samples = ctx.sampleRate * seconds;
+  const buf = ctx.createBuffer(1, samples, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for (let i = 0; i < samples; i++) {
+    const white = Math.random() * 2 - 1;
+    // Pink noise approximation (Voss-McCartney)
+    b0 = 0.99886*b0 + white*0.0555179;
+    b1 = 0.99332*b1 + white*0.0750759;
+    b2 = 0.96900*b2 + white*0.1538520;
+    b3 = 0.86650*b3 + white*0.3104856;
+    b4 = 0.55000*b4 + white*0.5329522;
+    b5 = -0.7616*b5 - white*0.0168980;
+    data[i] = (b0+b1+b2+b3+b4+b5+b6 + white*0.5362) * 0.11;
+    b6 = white * 0.115926;
+  }
+  return buf;
+}
+
+// ─── Brown noise buffer ───────────────────────────────────────────────────────
+function createBrownBuffer(ctx, seconds = 4) {
+  const samples = ctx.sampleRate * seconds;
+  const buf = ctx.createBuffer(1, samples, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < samples; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last * 3.5;
+    if (data[i] > 1) data[i] = 1;
+    if (data[i] < -1) data[i] = -1;
+  }
+  return buf;
+}
+
+// ─── Track builders ──────────────────────────────────────────────────────────
+function buildHVAC(ctx, dest) {
+  const src = ctx.createBufferSource();
+  src.buffer = createNoiseBuffer(ctx, 3);
+  src.loop = true;
+  const lpf = ctx.createBiquadFilter();
+  lpf.type = 'lowpass';
+  lpf.frequency.value = 180;
+  lpf.Q.value = 0.5;
+  const hpf = ctx.createBiquadFilter();
+  hpf.type = 'highpass';
+  hpf.frequency.value = 40;
+  src.connect(lpf); lpf.connect(hpf); hpf.connect(dest);
+  src.start();
+  return [src, lpf, hpf];
+}
+
+function buildDrone(ctx, dest) {
+  const nodes = [];
+  const freqs = [55, 82.5, 110, 123.5]; // A1, E2, A2, B2
+  const detuneAmounts = [0, 3, -4, 7];
+  const gains = [0.5, 0.3, 0.25, 0.15];
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+    osc.frequency.value = f;
+    osc.detune.value = detuneAmounts[i];
+    const g = ctx.createGain();
+    g.gain.value = gains[i];
+    // AM modulation: slow tremolo
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.1 + i * 0.07;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.06;
+    lfo.connect(lfoGain); lfoGain.connect(g.gain);
+    const reverb = ctx.createBiquadFilter();
+    reverb.type = 'lowpass'; reverb.frequency.value = 400;
+    osc.connect(reverb); reverb.connect(g); g.connect(dest);
+    osc.start(); lfo.start();
+    nodes.push(osc, g, lfo, lfoGain, reverb);
+  });
+  return nodes;
+}
+
+function buildVoices(ctx, dest) {
+  const src = ctx.createBufferSource();
+  src.buffer = createBrownBuffer(ctx, 4);
+  src.loop = true;
+  const bpf = ctx.createBiquadFilter();
+  bpf.type = 'bandpass';
+  bpf.frequency.value = 350;
+  bpf.Q.value = 0.4;
+  const bpf2 = ctx.createBiquadFilter();
+  bpf2.type = 'bandpass';
+  bpf2.frequency.value = 800;
+  bpf2.Q.value = 0.6;
+  const mix = ctx.createGain();
+  mix.gain.value = 0.5;
+  src.connect(bpf); src.connect(bpf2);
+  bpf.connect(mix); bpf2.connect(mix); mix.connect(dest);
+  src.start();
+  return [src, bpf, bpf2, mix];
+}
+
+function buildCoffee(ctx, dest) {
+  const nodes = [];
+  // Boiling: bandpass noise bursts
+  function burst() {
+    if (!playing) return;
+    const buf = ctx.createBufferSource();
+    buf.buffer = createNoiseBuffer(ctx, 0.3);
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = 600 + Math.random() * 400;
+    bpf.Q.value = 8;
+    const eg = ctx.createGain();
+    eg.gain.setValueAtTime(0, ctx.currentTime);
+    eg.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+    eg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    buf.connect(bpf); bpf.connect(eg); eg.connect(dest);
+    buf.start();
+    buf.stop(ctx.currentTime + 0.3);
+    nodes.push(buf, bpf, eg);
+    const next = 0.15 + Math.random() * 0.6;
+    setTimeout(burst, next * 1000);
+  }
+  burst();
+  return nodes;
+}
+
+let keyTimerId = null;
+function buildKeys(ctx, dest) {
+  const nodes = [];
+  function keyClick() {
+    if (!playing) return;
+    // Simulate a word burst (5-15 clicks)
+    const count = 3 + Math.floor(Math.random() * 12);
+    for (let k = 0; k < count; k++) {
+      const delay = k * (0.06 + Math.random() * 0.06);
+      const buf = ctx.createBufferSource();
+      // Short click buffer
+      const clickLen = Math.floor(ctx.sampleRate * 0.03);
+      const clickBuf = ctx.createBuffer(1, clickLen, ctx.sampleRate);
+      const d = clickBuf.getChannelData(0);
+      for (let i = 0; i < clickLen; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / clickLen, 6);
+      }
+      buf.buffer = clickBuf;
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 2000 + Math.random() * 3000;
+      const eg = ctx.createGain();
+      const vel = 0.15 + Math.random() * 0.35;
+      eg.gain.value = vel;
+      buf.connect(hpf); hpf.connect(eg); eg.connect(dest);
+      buf.start(ctx.currentTime + delay);
+      buf.stop(ctx.currentTime + delay + 0.04);
+      nodes.push(buf, hpf, eg);
+    }
+    // Pause between word bursts
+    const nextBurst = 0.8 + Math.random() * 3.0;
+    keyTimerId = setTimeout(keyClick, nextBurst * 1000);
+  }
+  keyClick();
+  return nodes;
+}
+
+let printTimerId = null;
+function buildPrinter(ctx, dest) {
+  const nodes = [];
+  function printLine() {
+    if (!playing) return;
+    const duration = 0.8 + Math.random() * 1.5;
+    const src = ctx.createBufferSource();
+    const samples = Math.floor(ctx.sampleRate * duration);
+    const buf = ctx.createBuffer(1, samples, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    // Scanning motor: modulated noise
+    for (let i = 0; i < samples; i++) {
+      const t2 = i / ctx.sampleRate;
+      const sweep = Math.sin(2 * Math.PI * 80 * t2 * (1 + t2 * 0.3));
+      data[i] = (Math.random() * 2 - 1) * 0.3 + sweep * 0.4;
+    }
+    src.buffer = buf;
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = 800;
+    bpf.Q.value = 2;
+    const eg = ctx.createGain();
+    eg.gain.setValueAtTime(0, ctx.currentTime);
+    eg.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.05);
+    eg.gain.setValueAtTime(0.6, ctx.currentTime + duration - 0.1);
+    eg.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+    src.connect(bpf); bpf.connect(eg); eg.connect(dest);
+    src.start();
+    src.stop(ctx.currentTime + duration + 0.05);
+    nodes.push(src, bpf, eg);
+    // Random gap
+    const nextLine = 1.5 + Math.random() * 6;
+    printTimerId = setTimeout(printLine, nextLine * 1000);
+  }
+  printLine();
+  return nodes;
+}
+
+// ─── Track registry ───────────────────────────────────────────────────────────
+const TRACK_DEFS = {
+  hvac:    { label: 'HVAC/空調',          vol: 60,  enabled: true,  build: buildHVAC },
+  drone:   { label: 'Lo-Fiドローン',       vol: 40,  enabled: true,  build: buildDrone },
+  voices:  { label: '遠くの会話',           vol: 25,  enabled: true,  build: buildVoices },
+  coffee:  { label: 'コーヒーメーカー',      vol: 30,  enabled: true,  build: buildCoffee },
+  keys:    { label: 'キーボード',           vol: 45,  enabled: true,  build: buildKeys },
+  printer: { label: 'プリンター',           vol: 0,   enabled: false, build: buildPrinter },
+};
+
+// ─── Init AudioContext ────────────────────────────────────────────────────────
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  master = ctx.createGain();
+  master.gain.value = 1.0;
+  master.connect(analyser);
+  analyser.connect(ctx.destination);
+
+  Object.entries(TRACK_DEFS).forEach(([id, def]) => {
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = (def.enabled ? def.vol : 0) / 100;
+    gainNode.connect(master);
+    const nodes = def.build(ctx, gainNode);
+    tracks[id] = { gain: gainNode, enabled: def.enabled, nodes };
+    log(`<span class="evt">+INIT</span> ${def.label} @ ${def.vol}%`);
+  });
+}
+
+// ─── Toggle play ──────────────────────────────────────────────────────────────
+function togglePlay() {
+  if (!playing) {
+    if (!ctx) initAudio();
+    if (ctx.state === 'suspended') ctx.resume();
+    playing = true;
+    document.getElementById('playBtn').classList.add('playing');
+    document.getElementById('playIcon').textContent = '⏸';
+    document.getElementById('vizOverlay').classList.add('hidden');
+    drawViz();
+    log('<span class="evt">▶ PLAY</span> エンジン起動');
+  } else {
+    playing = false;
+    ctx.suspend();
+    document.getElementById('playBtn').classList.remove('playing');
+    document.getElementById('playIcon').textContent = '▶';
+    cancelAnimationFrame(rafId);
+    log('<span class="evt">⏸ PAUSE</span> エンジン一時停止');
+  }
+}
+
+// ─── Volume control ───────────────────────────────────────────────────────────
+function setVolume(id, val) {
+  const pct = parseInt(val);
+  document.getElementById('vol-' + id).textContent = pct + '%';
+  document.getElementById('lbl-' + id).textContent = pct;
+  if (tracks[id]) {
+    tracks[id].gain.gain.linearRampToValueAtTime(
+      tracks[id].enabled ? pct / 100 : 0,
+      ctx ? ctx.currentTime + 0.1 : 0
+    );
+  }
+  TRACK_DEFS[id].vol = pct;
+}
+
+function toggleTrack(id) {
+  const def = TRACK_DEFS[id];
+  def.enabled = !def.enabled;
+  const btn = document.getElementById('tog-' + id);
+  btn.classList.toggle('on', def.enabled);
+  if (tracks[id] && ctx) {
+    const target = def.enabled ? def.vol / 100 : 0;
+    tracks[id].gain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.2);
+    tracks[id].enabled = def.enabled;
+    log(`<span class="evt">${def.enabled ? '+ON' : '-OFF'}</span> ${def.label}`);
+  }
+}
+
+// ─── Presets ──────────────────────────────────────────────────────────────────
+const PRESETS = {
+  morning: { hvac:60, keys:50, coffee:55, drone:30, voices:20, printer:0 },
+  focus:   { hvac:70, keys:15, coffee:10, drone:60, voices:10, printer:0 },
+  meeting: { hvac:50, keys:20, coffee:20, drone:20, voices:60, printer:15 },
+  night:   { hvac:40, keys:70, coffee:5,  drone:55, voices:5,  printer:10 },
+};
+
+function setPreset(name) {
+  const p = PRESETS[name];
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  Object.entries(p).forEach(([id, val]) => {
+    document.getElementById('sl-' + id).value = val;
+    setVolume(id, val);
+    // enable if > 0
+    if (val > 0 && !TRACK_DEFS[id].enabled) toggleTrack(id);
+    if (val === 0 && TRACK_DEFS[id].enabled) toggleTrack(id);
+  });
+  log(`<span class="evt">PRESET</span> ${name} に切り替え`);
+}
+
+// ─── Visualizer ───────────────────────────────────────────────────────────────
+const vizCanvas = document.getElementById('viz');
+const vizCtx = vizCanvas.getContext('2d');
+const dataArr = new Uint8Array(2048);
+
+function drawViz() {
+  if (!playing || !analyser) return;
+  rafId = requestAnimationFrame(drawViz);
+  analyser.getByteTimeDomainData(dataArr);
+  const W = vizCanvas.width, H = vizCanvas.height;
+  vizCtx.clearRect(0, 0, W, H);
+  // Background
+  vizCtx.fillStyle = 'rgba(0,0,0,0.2)';
+  vizCtx.fillRect(0, 0, W, H);
+  // Center line
+  vizCtx.strokeStyle = 'rgba(255,255,255,0.04)';
+  vizCtx.lineWidth = 1;
+  vizCtx.beginPath();
+  vizCtx.moveTo(0, H/2); vizCtx.lineTo(W, H/2);
+  vizCtx.stroke();
+  // Waveform
+  vizCtx.lineWidth = 2;
+  const grad = vizCtx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, '#2dd4bf');
+  grad.addColorStop(0.5, '#7c3aed');
+  grad.addColorStop(1, '#2dd4bf');
+  vizCtx.strokeStyle = grad;
+  vizCtx.beginPath();
+  const sliceW = W / dataArr.length;
+  let x = 0;
+  for (let i = 0; i < dataArr.length; i++) {
+    const v = dataArr[i] / 128.0;
+    const y = (v * H) / 2;
+    if (i === 0) vizCtx.moveTo(x, y);
+    else vizCtx.lineTo(x, y);
+    x += sliceW;
+  }
+  vizCtx.stroke();
+  // Glow
+  vizCtx.shadowBlur = 8;
+  vizCtx.shadowColor = '#14b8a6';
+}
+</script>
+</body>
+</html>

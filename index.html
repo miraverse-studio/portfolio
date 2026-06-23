@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI制作ポートフォリオ</title>
+<!-- 静的HTMLのみ / 外部ライブラリ・外部APIなし / 個人情報なし -->
+<!-- TODO(公開時): コード閲覧リンク {REPO_URL} を有効化 / footer のハンドル名を設定 -->
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#fff; --ink:#1c2430; --muted:#5b6776;
+    --line:#e3e7ee; --accent:#2f6df6; --a:#1f9d57; --b:#c77d11; --c:#8a93a3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;line-height:1.7;color:var(--ink);background:var(--bg);
+    font-family:-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 64px}
+  header h1{font-size:1.7rem;margin:0 0 6px}
+  .lead{color:var(--muted);margin:0}
+  .meta{font-size:.82rem;color:var(--muted);margin-top:10px}
+  section{margin-top:36px}
+  h2{font-size:1.15rem;border-left:4px solid var(--accent);padding-left:10px;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;
+    box-shadow:0 1px 2px rgba(20,30,50,.04)}
+  .hero{border-color:#cfe0ff}
+  .badge{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:999px;color:#fff;letter-spacing:.03em}
+  .badge.a{background:var(--a)} .badge.b{background:var(--b)} .badge.c{background:var(--c)}
+  .title{font-size:1.2rem;font-weight:700;margin:8px 0 4px}
+  .evi{color:var(--muted);font-size:.9rem;margin:6px 0 14px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{display:inline-block;text-decoration:none;font-size:.86rem;font-weight:600;
+    padding:8px 14px;border-radius:8px;border:1px solid var(--line);color:var(--ink);background:#fff}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .note{font-size:.78rem;color:var(--muted);margin-top:8px}
+  .pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .step{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:.84rem;font-weight:600}
+  .arrow{color:var(--muted)}
+  .safety{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:8px 20px;font-size:.88rem}
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
+  ul.clean{margin:6px 0;padding-left:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>AI制作ポートフォリオ</h1>
+    <p class="lead">要件定義・設計判断・テスト基準・レビュー観点・セキュリティ確認は自分が決定。実装はAI（主にClaude Code）に委譲し、品質ゲートで検証して仕上げています。</p>
+    <p class="meta">静的HTMLのみ（主要デモ） ／ 外部ライブラリ・外部APIなし ／ 個人情報なし</p>
+    <p class="meta">ランク凡例： <span class="badge a">A 完成・運用可</span> &nbsp; <span class="badge b">B 開発中</span> &nbsp; <span class="badge c">C 設計のみ</span></p>
+  </header>
+
+  <section>
+    <h2>代表作 — Hero</h2>
+    <div class="card hero">
+      <span class="badge a">ランク A</span>
+      <div class="title">AI制作管理OS v0.1</div>
+      <p>作った成果物を登録・編集・削除し、ダッシュボードで俯瞰、JSONで入出力、Markdownレポートを生成できる自作の管理ツール。データはブラウザ内（localStorage）に保存。</p>
+      <p class="evi">実ブラウザ確認済み・手動テスト <strong>55/55 PASS</strong>・運用可。初回 53/55 → escHtml 重複定義バグを検出・修正 → 再テスト 55/55。</p>
+      <div class="btns">
+        <a class="btn primary" href="./apps/ai-os/index.html">▸ デモを開く</a>
+        <a class="btn" href="./apps/ai-os/TEST_RESULT.md">▸ テスト結果を見る</a>
+        <a class="btn" href="./apps/ai-os/test-runner.html">▸ テストを実行</a>
+        <a class="btn" href="./projects/ai-production-os.md">▸ 詳細を読む</a>
+      </div>
+      <p class="note">※ ソースコードの閲覧リンクは GitHub 公開時に追加します（現在はローカル版）。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>実用ツール — Works</h2>
+    <div class="card">
+      <span class="badge a">ランク A</span>
+      <div class="title">Prompt Launcher v1</div>
+      <p>Claude Code 用の開始プロンプトをテンプレートから生成し、ワンクリックでコピー。入力は localStorage に保存・復元。コピー・メモ帳貼り付け・保存／復元を確認済み。</p>
+      <div class="btns">
+        <a class="btn primary" href="./apps/prompt-launcher/index.html">▸ デモを開く</a>
+        <a class="btn" href="./projects/prompt-launcher.md">▸ 詳細を読む</a>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>実験・量産 — Full-Power Test（41本）</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="badge a">ランク A</span>
+        <div class="title">Mira Full-Power Test（41本）</div>
+        <p>1セッションで一気に作った41本の制作物集（ダッシュボード／カンバン／3D／ポモドーロ等のHTML、Blenderスクリプト、デスクトップ補助アプリ）。デモ・共有可。既知の弱点＝自動テストなし。</p>
+        <div class="btns">
+          <a class="btn primary" href="./apps/full-power-test/index.html">▸ デモを開く</a>
+          <a class="btn" href="./projects/full-power-test.md">▸ 詳細を読む</a>
+        </div>
+      </div>
+      <div class="card">
+        <span class="badge b">ランク B</span>
+        <div class="title">Chrome拡張</div>
+        <p>Full-Power Test の一部。Manifest V3 の拡張。開発中（Chrome ウェブストア未登録・ローカルでデモ可）。</p>
+        <div class="btns">
+          <a class="btn" href="./projects/chrome-extension.md">▸ 詳細を読む</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>設計・プロセスの証拠 — Process</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="badge a">ランク A</span>
+        <div class="title">AI制作練度カリキュラム</div>
+        <p>90日でAI制作スキルを上げる学習設計（スキルマップ・課題20本・10観点評価表）。</p>
+        <div class="btns"><a class="btn" href="./projects/ai-skill-curriculum.md">▸ 詳細を読む</a></div>
+      </div>
+      <div class="card">
+        <span class="badge a">ランク A</span>
+        <div class="title">Claude Code 共通起動パック</div>
+        <p>AIセッションの品質を揃える文脈注入の標準化。内部プロンプト全文は非公開、設計思想のみ紹介。</p>
+        <div class="btns"><a class="btn" href="./projects/session-start-pack.md">▸ 詳細を読む</a></div>
+      </div>
+      <div class="card">
+        <span class="badge a">ランク A</span>
+        <div class="title">Blender学習支援OS v0.1</div>
+        <p>Blenderの学習記録・テクニック整理・進捗可視化を一元管理する自作Webアプリ。実機テスト14ケース全PASS。</p>
+        <div class="btns"><a class="btn primary" href="./apps/blender-os/index.html">▸ デモを開く</a><a class="btn" href="./projects/blender-learning-os.md">▸ 詳細を読む</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>制作フロー（品質ゲート）</h2>
+    <div class="card">
+      <div class="pipe">
+        <span class="step">要件定義</span><span class="arrow">→</span>
+        <span class="step">設計</span><span class="arrow">→</span>
+        <span class="step">実装（AIに委譲）</span><span class="arrow">→</span>
+        <span class="step">テスト</span><span class="arrow">→</span>
+        <span class="step">セキュリティレビュー</span><span class="arrow">→</span>
+        <span class="step">ドキュメント</span>
+      </div>
+      <p class="note">「コード完成」と「ブラウザ確認済み」を別ステータスとして扱い、未確認を完成と書かない運用にしています。変更前に対象と影響範囲を決めてから実装します。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>レビューのお願い</h2>
+    <div class="card">
+      <p>コードの読みやすさ・設計の妥当性・テストの妥当性・セキュリティ（XSS対策）・「AIディレクター／プロトタイピングPMとして見えるか」を中心に見ていただけると助かります。</p>
+      <div class="btns"><a class="btn primary" href="./REVIEW_GUIDE.md">▸ レビューガイドを読む</a></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>安全に関する明記</h2>
+    <div class="safety">
+      <ul class="clean">
+        <li>APIキーなし ／ 個人情報なし</li>
+        <li>主要デモは静的HTML（外部ライブラリ・外部APIなし）。Full-Power Test には補助スクリプト（Python等）を含むものがあります。</li>
+        <li>データはブラウザ内（localStorage）に保存。サーバー送信なし。</li>
+        <li><strong>公開前チェック未完了のため、現時点では一般公開しません。</strong></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    制作者: Mira<br>
+    学習目的のプロトタイプです。商用利用は想定していません。連絡は REVIEW_GUIDE をご覧ください（メールアドレスは掲載していません）。
+  </footer>
+
+</div>
+</body>
+</html>
