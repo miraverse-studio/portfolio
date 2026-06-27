@@ -21,10 +21,10 @@ canvas#main { position:fixed;inset:0;z-index:1;cursor:crosshair;touch-action:non
 .sep { width:1px; height:20px; background:rgba(255,255,255,0.1); flex-shrink:0; }
 .tool-btn {
   padding:5px 10px; border-radius:12px; cursor:pointer; border:1px solid transparent;
-  background:transparent; color:rgba(255,255,255,0.5); font-size:14px; transition:all 0.15s;
+  background:transparent; color:rgba(255,255,255,0.8); font-size:15px; transition:all 0.15s;
   font-family:inherit; white-space:nowrap;
 }
-.tool-btn:hover { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.8); }
+.tool-btn:hover { background:rgba(255,255,255,0.07); color:#fff; }
 .tool-btn.active { background:rgba(124,58,237,0.2); border-color:rgba(124,58,237,0.5); color:#a78bfa; }
 
 .color-swatch {
@@ -33,9 +33,9 @@ canvas#main { position:fixed;inset:0;z-index:1;cursor:crosshair;touch-action:non
 }
 .color-swatch.active { border-color:#fff; transform:scale(1.2); }
 
-.size-btn { font-size:18px; cursor:pointer; color:rgba(255,255,255,0.4); padding:2px 6px; border:none; background:none; }
+.size-btn { font-size:19px; cursor:pointer; color:rgba(255,255,255,0.75); padding:2px 6px; border:none; background:none; }
 .size-btn:hover { color:#fff; }
-.size-disp { font-size:11px; color:rgba(255,255,255,0.4); min-width:20px; text-align:center; font-family:'JetBrains Mono',monospace; }
+.size-disp { font-size:14px; color:#c7d0dc; min-width:20px; text-align:center; font-family:'JetBrains Mono',monospace; }
 
 .bottom-bar {
   position:fixed; z-index:20; bottom:14px; left:50%; transform:translateX(-50%);
@@ -44,26 +44,26 @@ canvas#main { position:fixed;inset:0;z-index:1;cursor:crosshair;touch-action:non
   border-radius:20px; backdrop-filter:blur(8px);
 }
 .b-btn {
-  font-size:11px; padding:5px 12px; border-radius:12px; cursor:pointer;
+  font-size:14px; padding:5px 12px; border-radius:12px; cursor:pointer;
   border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04);
-  color:rgba(255,255,255,0.4); font-family:inherit; transition:all 0.2s;
+  color:#c7d0dc; font-family:inherit; transition:all 0.2s;
 }
 .b-btn:hover { color:#fff; }
-.b-btn.danger { border-color:rgba(239,68,68,0.3); color:rgba(239,68,68,0.5); }
+.b-btn.danger { border-color:rgba(239,68,68,0.3); color:#f87171; }
 .b-btn.danger:hover { background:rgba(239,68,68,0.1); color:#f87171; }
-.b-btn.save { border-color:rgba(16,185,129,0.3); color:rgba(16,185,129,0.5); }
+.b-btn.save { border-color:rgba(16,185,129,0.3); color:#34d399; }
 .b-btn.save:hover { background:rgba(16,185,129,0.08); color:#34d399; }
 
 .back-btn {
   position:fixed; z-index:20; top:14px; left:14px;
-  color:rgba(255,255,255,0.3); text-decoration:none; font-size:11px;
+  color:#c7d0dc; text-decoration:none; font-size:14px;
   padding:5px 12px; border:1px solid rgba(255,255,255,0.1); border-radius:16px;
   background:rgba(15,15,26,0.8); backdrop-filter:blur(8px);
 }
 
 .hint {
   position:fixed; z-index:20; bottom:60px; left:50%; transform:translateX(-50%);
-  font-size:10px; color:rgba(255,255,255,0.2); white-space:nowrap;
+  font-size:13px; color:rgba(255,255,255,0.55); white-space:nowrap;
   font-family:'JetBrains Mono',monospace;
 }
 </style>

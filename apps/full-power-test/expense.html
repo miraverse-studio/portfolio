@@ -8,40 +8,40 @@
 <style>
 * { margin:0;padding:0;box-sizing:border-box; }
 :root {
-  --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
-  --text:#e2e8f0; --muted:#94a3b8; --red:#ef4444; --green:#10b981;
+  --bg:#13151e; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07);
+  --text:#e2e8f0; --muted:#c7d0dc; --red:#ef4444; --green:#10b981;
 }
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; padding-bottom:40px; }
 
 .nav { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--b1); }
-.back { color:var(--muted); text-decoration:none; font-size:11px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
-.nav-t { font-size:14px; font-weight:900; flex:1; }
-.msel { padding:6px 10px; border-radius:16px; font-size:11px; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-family:'JetBrains Mono',monospace; cursor:pointer; outline:none; }
+.back { color:var(--muted); text-decoration:none; font-size:13px; padding:5px 12px; border:1px solid var(--b1); border-radius:16px; }
+.nav-t { font-size:17px; font-weight:900; flex:1; }
+.msel { padding:6px 10px; border-radius:16px; font-size:13px; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-family:'JetBrains Mono',monospace; cursor:pointer; outline:none; }
 
 /* BALANCE */
 .balance-card { margin:16px; background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(245,158,11,0.06)); border:1px solid rgba(124,58,237,0.2); border-radius:16px; padding:20px; }
 .bal-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
-.bal-label { font-size:11px; color:var(--muted); letter-spacing:0.15em; margin-bottom:4px; }
-.bal-amount { font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#a78bfa; }
-.bal-budget { font-size:12px; color:var(--muted); }
+.bal-label { font-size:13px; color:var(--muted); letter-spacing:0.15em; margin-bottom:4px; }
+.bal-amount { font-size:34px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#a78bfa; }
+.bal-budget { font-size:14px; color:var(--muted); }
 .bal-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .bal-item { background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; }
-.bal-item-label { font-size:10px; color:var(--muted); margin-bottom:4px; }
-.bal-item-val { font-size:16px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.bal-item-label { font-size:13px; color:var(--muted); margin-bottom:4px; }
+.bal-item-val { font-size:18px; font-weight:700; font-family:'JetBrains Mono',monospace; }
 .meter { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; margin-top:8px; }
 .meter-fill { height:100%; border-radius:3px; transition:width 0.5s ease; }
 
 /* ADD FORM */
 .add-form { margin:0 16px 16px; background:var(--s1); border:1px solid var(--b1); border-radius:14px; padding:14px; }
-.form-title { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:12px; letter-spacing:0.1em; }
+.form-title { font-size:14px; font-weight:700; color:var(--muted); margin-bottom:12px; letter-spacing:0.1em; }
 .form-row { display:flex; gap:8px; margin-bottom:8px; }
-.f-input { flex:1; padding:9px 12px; background:rgba(0,0,0,0.3); border:1px solid var(--b1); border-radius:10px; color:var(--text); font-size:12px; font-family:inherit; outline:none; }
+.f-input { flex:1; padding:9px 12px; background:rgba(0,0,0,0.3); border:1px solid var(--b1); border-radius:10px; color:var(--text); font-size:15px; font-family:inherit; outline:none; }
 .f-input:focus { border-color:rgba(124,58,237,0.4); }
-.f-sel { padding:9px 10px; border-radius:10px; font-size:11px; border:1px solid var(--b1); background:rgba(0,0,0,0.3); color:var(--text); font-family:inherit; outline:none; cursor:pointer; }
+.f-sel { padding:9px 10px; border-radius:10px; font-size:14px; border:1px solid var(--b1); background:rgba(0,0,0,0.3); color:var(--text); font-family:inherit; outline:none; cursor:pointer; }
 .f-sel:focus { border-color:rgba(124,58,237,0.4); }
-.add-btn { padding:9px 18px; border-radius:10px; background:#7c3aed; border:none; color:#fff; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.add-btn { padding:9px 18px; border-radius:10px; background:#7c3aed; border:none; color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
 .type-toggle { display:flex; gap:6px; }
-.type-btn { flex:1; padding:8px; border-radius:8px; font-size:11px; cursor:pointer; font-family:inherit; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-weight:700; }
+.type-btn { flex:1; padding:8px; border-radius:8px; font-size:14px; cursor:pointer; font-family:inherit; border:1px solid var(--b1); background:var(--s1); color:var(--muted); font-weight:700; }
 .type-btn.expense.active { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.4); color:#f87171; }
 .type-btn.income.active { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.4); color:#34d399; }
 
@@ -50,26 +50,26 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .chart-row { display:flex; align-items:center; gap:16px; }
 svg#pie { flex-shrink:0; }
 .pie-legend { display:flex; flex-direction:column; gap:6px; flex:1; }
-.ple { display:flex; align-items:center; gap:8px; font-size:11px; }
+.ple { display:flex; align-items:center; gap:8px; font-size:13px; }
 .ple-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .ple-name { flex:1; }
 .ple-val { font-family:'JetBrains Mono',monospace; color:var(--muted); }
 
 /* LIST */
 .list-section { padding:0 16px; }
-.list-title { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:0.15em; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
-.clear-btn { font-size:10px; padding:3px 10px; border-radius:10px; cursor:pointer; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); color:#f87171; }
+.list-title { font-size:13px; color:var(--muted); font-weight:700; letter-spacing:0.15em; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+.clear-btn { font-size:13px; padding:3px 10px; border-radius:10px; cursor:pointer; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); color:#f87171; }
 .tx-list { display:flex; flex-direction:column; gap:6px; }
 .tx {
   display:flex; align-items:center; gap:10px; padding:10px 12px;
   background:var(--s1); border:1px solid var(--b1); border-radius:10px;
 }
-.tx-cat { font-size:18px; }
+.tx-cat { font-size:20px; }
 .tx-body { flex:1; }
-.tx-name { font-size:12px; font-weight:700; }
-.tx-date { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
-.tx-amount { font-size:13px; font-weight:700; font-family:'JetBrains Mono',monospace; }
-.tx-del { color:rgba(239,68,68,0.3); cursor:pointer; padding:4px 6px; font-size:13px; }
+.tx-name { font-size:15px; font-weight:700; }
+.tx-date { font-size:13px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.tx-amount { font-size:15px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.tx-del { color:rgba(239,68,68,0.55); cursor:pointer; padding:4px 6px; font-size:15px; }
 .tx-del:hover { color:#f87171; }
 </style>
 </head>
@@ -134,7 +134,7 @@ svg#pie { flex-shrink:0; }
 </div>
 
 <div class="chart-wrap">
-  <div style="font-size:12px;font-weight:700;margin-bottom:10px;">カテゴリ内訳</div>
+  <div style="font-size:14px;font-weight:700;margin-bottom:10px;">カテゴリ内訳</div>
   <div class="chart-row">
     <svg id="pie" width="100" height="100" viewBox="0 0 100 100"></svg>
     <div class="pie-legend" id="legend"></div>
@@ -276,7 +276,7 @@ function render() {
 
   // List
   const listEl = document.getElementById('txList');
-  if (m.txs.length === 0) { listEl.innerHTML = '<div style="font-size:11px;color:rgba(148,163,184,0.3);padding:12px 0;">取引なし</div>'; return; }
+  if (m.txs.length === 0) { listEl.innerHTML = '<div style="font-size:14px;color:#c7d0dc;padding:12px 0;">取引なし</div>'; return; }
   listEl.innerHTML = m.txs.map(t => `
     <div class="tx">
       <div class="tx-cat">${t.cat.split(' ')[0]}</div>
@@ -298,7 +298,7 @@ function renderPie(catMap, total) {
   const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   if (cats.length === 0 || total === 0) {
     svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
-    legend.innerHTML = '<div style="font-size:11px;color:rgba(148,163,184,0.3);">支出なし</div>';
+    legend.innerHTML = '<div style="font-size:13px;color:#c7d0dc;">支出なし</div>';
     return;
   }
 

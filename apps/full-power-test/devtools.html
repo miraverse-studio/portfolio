@@ -7,16 +7,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 * { margin:0;padding:0;box-sizing:border-box; }
-:root { --bg:#07070f; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07); --text:#e2e8f0; --muted:#64748b; --green:#10b981; --red:#ef4444; }
+:root { --bg:#13151e; --s1:rgba(255,255,255,0.04); --b1:rgba(255,255,255,0.07); --text:#e2e8f0; --muted:#c7d0dc; --green:#10b981; --red:#ef4444; }
 body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
-.nav { display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid var(--b1); flex-shrink:0; background:rgba(7,7,15,0.95); }
-.back { color:var(--muted); text-decoration:none; font-size:11px; padding:4px 10px; border:1px solid var(--b1); border-radius:12px; }
-.nav-title { font-size:13px; font-weight:700; flex:1; }
+.nav { display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid var(--b1); flex-shrink:0; background:rgba(19,21,30,0.95); }
+.back { color:var(--muted); text-decoration:none; font-size:13px; padding:4px 10px; border:1px solid var(--b1); border-radius:12px; }
+.nav-title { font-size:15px; font-weight:700; flex:1; }
 
 /* TABS */
 .tabs { display:flex; border-bottom:1px solid var(--b1); overflow-x:auto; flex-shrink:0; background:rgba(0,0,0,0.2); }
-.tab-btn { font-size:10px; padding:9px 16px; white-space:nowrap; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:'JetBrains Mono',monospace; border-bottom:2px solid transparent; transition:all 0.2s; flex-shrink:0; }
+.tab-btn { font-size:13px; padding:9px 16px; white-space:nowrap; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:'JetBrains Mono',monospace; border-bottom:2px solid transparent; transition:all 0.2s; flex-shrink:0; }
 .tab-btn.active { color:#a78bfa; border-bottom-color:#7c3aed; }
 .tab-btn:hover:not(.active) { color:var(--text); }
 
@@ -27,16 +27,16 @@ body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',mon
 .panel { display:flex; flex:1; gap:0; overflow:hidden; }
 .pane { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .pane + .pane { border-left:1px solid var(--b1); }
-.pane-header { padding:8px 12px; font-size:10px; color:var(--muted); border-bottom:1px solid var(--b1); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:rgba(0,0,0,0.15); }
+.pane-header { padding:8px 12px; font-size:13px; color:var(--muted); border-bottom:1px solid var(--b1); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:rgba(0,0,0,0.15); }
 .pane-header-title { letter-spacing:0.1em; }
 .pane-actions { display:flex; gap:6px; }
-.pane-btn { font-size:9px; padding:3px 8px; border-radius:6px; cursor:pointer; border:1px solid var(--b1); background:transparent; color:var(--muted); font-family:inherit; transition:all 0.15s; }
+.pane-btn { font-size:13px; padding:3px 8px; border-radius:6px; cursor:pointer; border:1px solid var(--b1); background:transparent; color:var(--muted); font-family:inherit; transition:all 0.15s; }
 .pane-btn:hover { color:#fff; }
 .pane-btn.ok { border-color:rgba(16,185,129,0.3); color:#34d399; }
 .pane-btn.err { border-color:rgba(239,68,68,0.3); color:#f87171; }
 
 textarea, .output {
-  flex:1; padding:12px; font-family:'JetBrains Mono',monospace; font-size:12px;
+  flex:1; padding:12px; font-family:'JetBrains Mono',monospace; font-size:14px;
   background:transparent; border:none; outline:none; color:var(--text); resize:none;
   line-height:1.7; overflow-y:auto;
 }
@@ -49,28 +49,28 @@ textarea, .output {
 .json-string { color:#4ade80; }
 .json-number { color:#fb923c; }
 .json-bool   { color:#38bdf8; }
-.json-null   { color:#94a3b8; }
+.json-null   { color:#c7d0dc; }
 
 /* REGEX */
 .regex-input-row { display:flex; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid var(--b1); flex-shrink:0; }
 .regex-delim { font-size:16px; color:var(--muted); }
-.regex-input { flex:1; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:13px; color:#a78bfa; }
-.flags-input { width:50px; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:13px; color:#fb923c; }
-.match-count { font-size:10px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--b1); flex-shrink:0; }
+.regex-input { flex:1; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:14px; color:#a78bfa; }
+.flags-input { width:50px; background:transparent; border:none; outline:none; font-family:'JetBrains Mono',monospace; font-size:14px; color:#fb923c; }
+.match-count { font-size:13px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--b1); flex-shrink:0; }
 .match { background:rgba(124,58,237,0.3); border-radius:2px; }
 .match-alt { background:rgba(245,158,11,0.2); border-radius:2px; }
 
 /* HASH GRID */
 .hash-grid { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; }
 .hash-row { display:grid; grid-template-columns:80px 1fr; border-bottom:1px solid var(--b1); }
-.hash-label { padding:10px 12px; font-size:10px; color:var(--muted); border-right:1px solid var(--b1); display:flex; align-items:center; }
-.hash-value { padding:10px 12px; font-size:11px; color:#4ade80; word-break:break-all; cursor:pointer; }
+.hash-label { padding:10px 12px; font-size:13px; color:var(--muted); border-right:1px solid var(--b1); display:flex; align-items:center; }
+.hash-value { padding:10px 12px; font-size:14px; color:#4ade80; word-break:break-all; cursor:pointer; }
 .hash-value:hover { background:rgba(16,185,129,0.05); }
 
 /* URL ENCODE */
 .url-grid { display:flex; flex-direction:column; gap:8px; padding:12px; overflow-y:auto; flex:1; }
 .url-row { display:grid; grid-template-columns:100px 1fr; gap:8px; align-items:start; }
-.url-label { font-size:10px; color:var(--muted); padding-top:4px; }
+.url-label { font-size:13px; color:var(--muted); padding-top:4px; }
 
 /* COLOR */
 .color-section { padding:12px; overflow-y:auto; flex:1; }
@@ -78,20 +78,20 @@ textarea, .output {
 .color-swatch-large { width:60px; height:60px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); flex-shrink:0; }
 .color-formats { display:flex; flex-direction:column; gap:6px; }
 .color-format-row { display:flex; gap:8px; align-items:center; }
-.color-fmt-label { font-size:9px; color:var(--muted); width:36px; }
-.color-fmt-val { font-size:11px; color:#a78bfa; cursor:pointer; flex:1; background:rgba(0,0,0,0.2); padding:4px 8px; border-radius:6px; border:1px solid var(--b1); }
+.color-fmt-label { font-size:13px; color:var(--muted); width:36px; }
+.color-fmt-val { font-size:14px; color:#a78bfa; cursor:pointer; flex:1; background:rgba(0,0,0,0.2); padding:4px 8px; border-radius:6px; border:1px solid var(--b1); }
 .color-fmt-val:hover { border-color:rgba(124,58,237,0.3); }
 .contrast-section { margin-top:12px; }
-.contrast-label { font-size:10px; color:var(--muted); margin-bottom:6px; }
-.contrast-demo { padding:10px; border-radius:8px; text-align:center; font-size:13px; margin-bottom:6px; }
+.contrast-label { font-size:13px; color:var(--muted); margin-bottom:6px; }
+.contrast-demo { padding:10px; border-radius:8px; text-align:center; font-size:14px; margin-bottom:6px; }
 
 /* DIFF */
 .diff-added   { background:rgba(16,185,129,0.1); color:#4ade80; }
 .diff-removed { background:rgba(239,68,68,0.1); color:#f87171; }
-.diff-line { padding:1px 12px; line-height:1.7; font-family:'JetBrains Mono',monospace; font-size:11px; }
+.diff-line { padding:1px 12px; line-height:1.7; font-family:'JetBrains Mono',monospace; font-size:14px; }
 
 /* STATUS BAR */
-.status-bar { padding:4px 12px; font-size:9px; color:var(--muted); border-top:1px solid var(--b1); flex-shrink:0; display:flex; gap:12px; background:rgba(0,0,0,0.2); }
+.status-bar { padding:4px 12px; font-size:13px; color:var(--muted); border-top:1px solid var(--b1); flex-shrink:0; display:flex; gap:12px; background:rgba(0,0,0,0.2); }
 </style>
 </head>
 <body>
@@ -130,7 +130,7 @@ textarea, .output {
         <div class="pane-header-title">OUTPUT</div>
         <div class="pane-actions">
           <button class="pane-btn" id="json-copy" onclick="copyText('json-out')">Copy</button>
-          <span id="json-status" style="font-size:9px;color:#34d399;"></span>
+          <span id="json-status" style="font-size:13px;color:#34d399;"></span>
         </div>
       </div>
       <div class="output" id="json-out"></div>
@@ -193,7 +193,7 @@ https://mira.example.com
     <div class="pane">
       <div class="pane-header">
         <div class="pane-header-title">HASHES</div>
-        <div class="pane-actions"><span style="font-size:9px;color:var(--muted);">クリックでコピー</span></div>
+        <div class="pane-actions"><span style="font-size:13px;color:var(--muted);">クリックでコピー</span></div>
       </div>
       <div class="hash-grid" id="hash-grid"></div>
     </div>
@@ -230,7 +230,7 @@ https://mira.example.com
           <div class="contrast-label">コントラスト確認</div>
           <div class="contrast-demo" id="contrast-dark" style="background:#000;">暗い背景に表示</div>
           <div class="contrast-demo" id="contrast-light" style="background:#fff;">明るい背景に表示</div>
-          <div id="contrast-ratio" style="font-size:10px;color:var(--muted);"></div>
+          <div id="contrast-ratio" style="font-size:13px;color:var(--muted);"></div>
         </div>
       </div>
     </div>
@@ -255,7 +255,7 @@ https://mira.example.com
     <div class="pane">
       <div class="pane-header">
         <div class="pane-header-title">DIFF</div>
-        <div class="pane-actions"><span id="diff-info" style="font-size:9px;color:var(--muted);"></span></div>
+        <div class="pane-actions"><span id="diff-info" style="font-size:13px;color:var(--muted);"></span></div>
       </div>
       <div class="output" id="diff-out"></div>
     </div>
@@ -374,8 +374,8 @@ function regexTest() {
     out.innerHTML = matches.map((m, i) => {
       const groups = m.groups ? JSON.stringify(m.groups, null, 2) : '';
       return `<div style="margin-bottom:8px;padding:6px 8px;background:rgba(124,58,237,0.08);border-radius:6px;border-left:2px solid #7c3aed;">
-<span style="color:#64748b;font-size:9px;">Match ${i+1} [${m.index}:${m.index+m[0].length}]</span>
-<span style="color:#a78bfa;">  ${m[0].replace(/</g,'&lt;')}</span>${groups ? `\n<span style="color:#64748b;font-size:9px;">Groups: ${groups}</span>` : ''}
+<span style="color:#c7d0dc;font-size:13px;">Match ${i+1} [${m.index}:${m.index+m[0].length}]</span>
+<span style="color:#a78bfa;">  ${m[0].replace(/</g,'&lt;')}</span>${groups ? `\n<span style="color:#c7d0dc;font-size:13px;">Groups: ${groups}</span>` : ''}
 </div>`;
     }).join('');
   } catch(e) {
@@ -471,9 +471,9 @@ function urlProcess() {
   const encodedFull = (() => { try { return encodeURI(input); } catch{ return input; } })();
 
   out.innerHTML = `
-    <div class="url-row"><div class="url-label">Encoded</div><div style="font-size:11px;color:#a78bfa;word-break:break-all;cursor:pointer;" onclick="navigator.clipboard.writeText('${encoded.replace(/'/g,"\\'")}');">${encoded}</div></div>
-    <div class="url-row"><div class="url-label">Decoded</div><div style="font-size:11px;color:#4ade80;word-break:break-all;">${decoded.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>
-    <div class="url-row"><div class="url-label">Full URI</div><div style="font-size:11px;color:#fb923c;word-break:break-all;">${encodedFull.replace(/&/g,'&amp;')}</div></div>
+    <div class="url-row"><div class="url-label">Encoded</div><div style="font-size:14px;color:#a78bfa;word-break:break-all;cursor:pointer;" onclick="navigator.clipboard.writeText('${encoded.replace(/'/g,"\\'")}');">${encoded}</div></div>
+    <div class="url-row"><div class="url-label">Decoded</div><div style="font-size:14px;color:#4ade80;word-break:break-all;">${decoded.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>
+    <div class="url-row"><div class="url-label">Full URI</div><div style="font-size:14px;color:#fb923c;word-break:break-all;">${encodedFull.replace(/&/g,'&amp;')}</div></div>
   `;
 
   try {
@@ -482,7 +482,7 @@ function urlProcess() {
       [['Protocol', url.protocol],['Host', url.hostname],['Port', url.port||'(default)'],
        ['Path', url.pathname],['Query', url.search],['Hash', url.hash],
        ['Origin', url.origin]]
-      .map(([k,v]) => `<div style="display:flex;gap:8px;"><span style="color:var(--muted);font-size:9px;width:60px;">${k}</span><span style="color:#e2e8f0;font-size:11px;">${v||'—'}</span></div>`)
+      .map(([k,v]) => `<div style="display:flex;gap:8px;"><span style="color:var(--muted);font-size:13px;width:60px;">${k}</span><span style="color:#e2e8f0;font-size:14px;">${v||'—'}</span></div>`)
       .join('') + `</div>`;
   } catch {
     parsed.textContent = 'URLとして解析不可';
@@ -526,8 +526,8 @@ function colorUpdate() {
     shades.map((c,i) => `
       <div style="display:flex;gap:8px;align-items:center;">
         <div style="width:40px;height:28px;border-radius:6px;background:${c};flex-shrink:0;cursor:pointer;" onclick="document.getElementById('color-picker').value='${c}';colorUpdate();"></div>
-        <div style="font-size:10px;color:#a78bfa;cursor:pointer;" onclick="navigator.clipboard.writeText('${c}')">${c}</div>
-        <div style="font-size:9px;color:var(--muted);">${['50','100','200','300','400','500'][i]}</div>
+        <div style="font-size:14px;color:#a78bfa;cursor:pointer;" onclick="navigator.clipboard.writeText('${c}')">${c}</div>
+        <div style="font-size:13px;color:var(--muted);">${['50','100','200','300','400','500'][i]}</div>
       </div>`).join('') + '</div>';
 }
 window.colorUpdate = colorUpdate;
@@ -593,7 +593,7 @@ function computeDiff() {
   while (ai < a.length || bi < b.length) {
     if (li < lcs.length && ai < a.length && bi < b.length &&
         a[ai] === lcs[li] && b[bi] === lcs[li]) {
-      result.push(`<div class="diff-line" style="color:rgba(255,255,255,0.4);">&nbsp; ${escHtml(a[ai])}</div>`);
+      result.push(`<div class="diff-line" style="color:rgba(255,255,255,0.75);">&nbsp; ${escHtml(a[ai])}</div>`);
       ai++; bi++; li++;
     } else if (ai < a.length && (li >= lcs.length || a[ai] !== lcs[li])) {
       result.push(`<div class="diff-line diff-removed">- ${escHtml(a[ai])}</div>`);
@@ -640,28 +640,28 @@ function jwtDecode() {
   const payload = b64url(parts[1]);
 
   let html = '<div style="padding:12px;">';
-  html += '<div style="margin-bottom:12px;"><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">HEADER</div>';
-  html += '<div style="font-size:11px;color:#a78bfa;">' + JSON.stringify(header, null, 2).replace(/</g,'&lt;') + '</div></div>';
+  html += '<div style="margin-bottom:12px;"><div style="font-size:13px;color:#c7d0dc;margin-bottom:4px;letter-spacing:0.1em;">HEADER</div>';
+  html += '<div style="font-size:14px;color:#a78bfa;">' + JSON.stringify(header, null, 2).replace(/</g,'&lt;') + '</div></div>';
 
-  html += '<div style="margin-bottom:12px;"><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">PAYLOAD</div>';
+  html += '<div style="margin-bottom:12px;"><div style="font-size:13px;color:#c7d0dc;margin-bottom:4px;letter-spacing:0.1em;">PAYLOAD</div>';
   if (typeof payload === 'object') {
     const rows = Object.entries(payload).map(([k,v]) => {
       let display = JSON.stringify(v);
       // Convert timestamps
       if ((k==='exp'||k==='iat'||k==='nbf') && typeof v==='number') {
-        display += ` <span style="color:#64748b;font-size:9px;">(${new Date(v*1000).toLocaleString('ja-JP')})</span>`;
+        display += ` <span style="color:#c7d0dc;font-size:13px;">(${new Date(v*1000).toLocaleString('ja-JP')})</span>`;
       }
-      return `<div style="display:flex;gap:8px;margin-bottom:3px;"><span style="color:#64748b;font-size:9px;min-width:60px;">${k}</span><span style="color:#4ade80;font-size:11px;">${display}</span></div>`;
+      return `<div style="display:flex;gap:8px;margin-bottom:3px;"><span style="color:#c7d0dc;font-size:13px;min-width:60px;">${k}</span><span style="color:#4ade80;font-size:14px;">${display}</span></div>`;
     }).join('');
     html += rows;
   } else {
-    html += `<div style="font-size:11px;color:#4ade80;">${String(payload)}</div>`;
+    html += `<div style="font-size:14px;color:#4ade80;">${String(payload)}</div>`;
   }
   html += '</div>';
 
-  html += '<div><div style="font-size:9px;color:#64748b;margin-bottom:4px;letter-spacing:0.1em;">SIGNATURE</div>';
-  html += `<div style="font-size:10px;color:#fb923c;word-break:break-all;">${parts[2]}</div>`;
-  html += '<div style="font-size:9px;color:#64748b;margin-top:4px;">⚠ ここではシグネチャ検証は行いません</div></div>';
+  html += '<div><div style="font-size:13px;color:#c7d0dc;margin-bottom:4px;letter-spacing:0.1em;">SIGNATURE</div>';
+  html += `<div style="font-size:13px;color:#fb923c;word-break:break-all;">${parts[2]}</div>`;
+  html += '<div style="font-size:13px;color:#c7d0dc;margin-top:4px;">⚠ ここではシグネチャ検証は行いません</div></div>';
   html += '</div>';
 
   out.innerHTML = html;

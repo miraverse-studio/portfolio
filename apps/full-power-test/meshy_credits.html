@@ -8,11 +8,11 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 :root {
-  --bg: #07070f;
+  --bg: #13151e;
   --surface: rgba(255,255,255,0.04);
   --border: rgba(255,255,255,0.07);
   --text: #e2e8f0;
-  --muted: #94a3b8;
+  --muted: #c7d0dc;
   --accent: #a78bfa;
   --gold: #f59e0b;
   --green: #10b981;
@@ -30,7 +30,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(7,7,15,0.95);
+  background: rgba(19,21,30,0.95);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
@@ -40,14 +40,14 @@ body {
   justify-content: space-between;
 }
 .header-logo {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
   background: linear-gradient(135deg, #a78bfa, #f59e0b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-.home-a { font-size: 11px; color: var(--muted); text-decoration: none; }
+.home-a { font-size: 14px; color: var(--muted); text-decoration: none; }
 
 /* ─── Main ─── */
 .main { padding: 20px 16px; max-width: 500px; margin: 0 auto; }
@@ -62,7 +62,7 @@ body {
   text-align: center;
 }
 .gauge-title {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.2em;
   color: var(--muted);
   margin-bottom: 16px;
@@ -80,7 +80,7 @@ body {
   line-height: 1;
 }
 .gauge-total {
-  font-size: 18px;
+  font-size: 20px;
   color: var(--muted);
 }
 .gauge-bar-wrap {
@@ -98,12 +98,12 @@ body {
 .gauge-stats {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .gauge-reset-info {
-  font-size: 11px;
-  color: rgba(148,163,184,0.5);
+  font-size: 13px;
+  color: #c7d0dc;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -111,7 +111,7 @@ body {
 
 /* ─── Quick Log Buttons ─── */
 .section-title {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.2em;
   color: var(--muted);
   margin-bottom: 12px;
@@ -138,14 +138,14 @@ body {
 .quick-btn:active { transform: scale(0.96); }
 .quick-btn:hover { border-color: rgba(167,139,250,0.4); background: rgba(124,58,237,0.06); }
 .quick-icon { font-size: 20px; margin-bottom: 4px; }
-.quick-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.quick-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
 .quick-cr {
   font-size: 16px;
   font-weight: 900;
   color: var(--gold);
   margin-bottom: 2px;
 }
-.quick-desc { font-size: 10px; color: var(--muted); }
+.quick-desc { font-size: 13px; color: var(--muted); }
 
 /* ─── Log Table ─── */
 .log-list {
@@ -164,8 +164,8 @@ body {
 }
 .log-icon { font-size: 18px; min-width: 22px; text-align: center; }
 .log-body { flex: 1; }
-.log-name { font-size: 13px; font-weight: 700; }
-.log-date { font-size: 10px; color: var(--muted); }
+.log-name { font-size: 15px; font-weight: 700; }
+.log-date { font-size: 13px; color: var(--muted); }
 .log-cr {
   font-size: 15px;
   font-weight: 900;
@@ -173,8 +173,8 @@ body {
 }
 .log-cr.gain { color: var(--green); }
 .log-del {
-  font-size: 11px;
-  color: rgba(148,163,184,0.4);
+  font-size: 13px;
+  color: #c7d0dc;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -193,7 +193,7 @@ body {
 }
 .form-row { display: flex; gap: 10px; align-items: flex-end; }
 .form-group { flex: 1; }
-.form-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 5px; display: block; }
+.form-label { font-size: 13px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 5px; display: block; }
 .form-input, .form-select {
   width: 100%;
   background: rgba(255,255,255,0.06);
@@ -201,7 +201,7 @@ body {
   border-radius: 8px;
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   padding: 8px 10px;
 }
 .form-select option { background: #0f0f1c; }
@@ -221,14 +221,14 @@ body {
 .add-btn:active { transform: scale(0.96); }
 
 /* ─── Reference Table ─── */
-.ref-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ref-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ref-table th {
   background: rgba(255,255,255,0.05);
   padding: 7px 10px;
   text-align: left;
   font-weight: 700;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.05em;
 }
 .ref-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
